@@ -1,0 +1,863 @@
+using System.Numerics;
+using Avalonia;
+using Avalonia.Input;
+using Avalonia.OpenGL;
+using Avalonia.OpenGL.Controls;
+using Avalonia.Threading;
+using Parsec.Rendering;
+using Parsec.Rendering.DeepZoom;
+using Parsec.Rendering.Gpu;
+using Parsec.Rendering.Raymarching;
+
+namespace Parsec.App;
+
+/// <summary>
+/// Stage 2: a live free-fly view of the AmazingBox. WASD moves (with Q/E for
+/// vertical), hold left-drag to mouse-look. Movement speed scales with the
+/// distance estimate at the camera so it feels right at every scale. Renders
+/// on change only — idle draws nothing.
+/// </summary>
+public enum FractalType { AmazingBox, Kifs, Kleinian, Attractor, Mandelbulb, QuaternionJulia, RotBox, Hybrid, QJBox, Menger, Bicomplex, Apollonian, Phoenix, Biomorph, Mosely, DeepZoom }
+
+public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomHitTest
+{
+    private Gl? _gl;
+    private RaymarchPipeline? _pipeline;
+    private GpuMandelboxRenderer? _boxRenderer;
+    private GpuKifsRenderer? _kifsRenderer;
+    private GpuKleinianRenderer? _kleinianRenderer;
+    private GpuAttractorRenderer? _attractorRenderer;
+    private GpuMandelbulbRenderer? _mandelbulbRenderer;
+    private GpuQuaternionJuliaRenderer? _qjuliaRenderer;
+    private GpuRotBoxRenderer? _rotboxRenderer;
+    private GpuHybridRenderer? _hybridRenderer;
+    private GpuQJBoxRenderer? _qjboxRenderer;
+    private GpuMengerRenderer? _mengerRenderer;
+    private GpuBicomplexRenderer? _bicomplexRenderer;
+    private GpuApollonianRenderer? _apollonianRenderer;
+    private GpuPhoenixRenderer? _phoenixRenderer;
+    private GpuBiomorphRenderer? _biomorphRenderer;
+    private GpuMoselyRenderer? _moselyRenderer;
+    private DeepZoomPipeline? _deepPipeline;
+    private Parsec.Core.Attractors.AttractorHash? _attractorHash;
+    private bool _attractorNeedsRegen = true;
+    private uint _texture, _vao, _blitProgram;
+    private int _samplerLocation;
+    private bool _ready;
+    private bool _dirty = true;
+
+    // Live fractal parameters, shared with the parameter panel.
+    public AmazingBoxState Fractal { get; } = new();
+    public KifsState Kifs { get; } = new();
+    public KleinianState Kleinian { get; } = new();
+    public AttractorState Attractor { get; } = new();
+    public MandelbulbState Mandelbulb { get; } = new();
+    public QuaternionJuliaState QuaternionJulia { get; } = new();
+    public RotBoxState RotBox { get; } = new();
+    public HybridState Hybrid { get; } = new();
+    public QJBoxState QJBox { get; } = new();
+    public MengerState Menger { get; } = new();
+    public BicomplexState Bicomplex { get; } = new();
+    public ApollonianState Apollonian { get; } = new();
+    public PhoenixState Phoenix { get; } = new();
+    public BiomorphState Biomorph { get; } = new();
+    public MoselyState Mosely { get; } = new();
+
+    /// <summary>Orbit-trap palette, shared across all fractals.</summary>
+    public PaletteState Palette { get; } = new();
+
+    /// <summary>Glossy-reflection material controls, shared across all fractals.</summary>
+    public ReflectionState Reflection { get; } = new();
+
+    /// <summary>Key-light direction + intensity, shared across all fractals.</summary>
+    public LightState Light { get; } = new();
+
+    /// <summary>Which fractal is currently displayed.</summary>
+    public FractalType ActiveType { get; private set; } = FractalType.Kifs;
+
+    /// <summary>Super-sampling AA factor for hero renders (1/4/9/16). Bound from
+    /// the UI; preview always renders at 1x regardless of this value.</summary>
+    public int HeroSampleCount { get; set; } = 1;
+
+    public void SetActiveType(FractalType type)
+    {
+        ActiveType = type;
+        MarkDirty();
+    }
+
+    /// <summary>
+    /// Build the combined schema for the active fractal plus the shared palette,
+    /// so the panel shows fractal params followed by colour controls.
+    /// </summary>
+    public ParamSchema BuildActiveSchema()
+    {
+        // Deep-zoom is a 2D escape-time mode: no DE-based fractal params, and no
+        // 3D reflection/light. Expose the shared palette only (pan/zoom drive the
+        // view via the mouse).
+        if (ActiveType == FractalType.DeepZoom)
+            return new ParamSchema
+            {
+                Parameters = new List<ParamDescriptor>(Palette.BuildSchema().Parameters)
+            };
+
+        var fractalSchema = ActiveType switch
+        {
+            FractalType.AmazingBox => Fractal.BuildSchema(),
+            FractalType.Kifs => Kifs.BuildSchema(),
+            FractalType.Kleinian => Kleinian.BuildSchema(),
+            FractalType.Attractor => Attractor.BuildSchema(),
+            FractalType.Mandelbulb => Mandelbulb.BuildSchema(),
+            FractalType.QuaternionJulia => QuaternionJulia.BuildSchema(),
+            FractalType.RotBox => RotBox.BuildSchema(),
+            FractalType.Hybrid => Hybrid.BuildSchema(),
+            FractalType.QJBox => QJBox.BuildSchema(),
+            FractalType.Menger => Menger.BuildSchema(),
+            FractalType.Bicomplex => Bicomplex.BuildSchema(),
+            FractalType.Apollonian => Apollonian.BuildSchema(),
+            FractalType.Phoenix => Phoenix.BuildSchema(),
+            FractalType.Biomorph => Biomorph.BuildSchema(),
+            FractalType.Mosely => Mosely.BuildSchema(),
+            _ => Kifs.BuildSchema(),
+        };
+        var combined = new List<ParamDescriptor>(fractalSchema.Parameters);
+        combined.AddRange(Palette.BuildSchema().Parameters);
+        combined.AddRange(Reflection.BuildSchema().Parameters);
+        combined.AddRange(Light.BuildSchema().Parameters);
+        return new ParamSchema { Parameters = combined };
+    }
+
+    /// <summary>Request a re-render (e.g. after a parameter change from the panel).</summary>
+    public void MarkDirty()
+    {
+        _dirty = true;
+        RequestNextFrameRendering();
+    }
+
+    /// <summary>
+    /// Flag that the attractor's GENERATION params changed, so the trajectory +
+    /// spatial hash must be rebuilt before the next attractor render. The
+    /// expensive rebuild itself happens on the GL thread (it uploads SSBOs), so
+    /// here we just set the flag and request a frame. Camera/colour/tube changes
+    /// do NOT call this -- they go through MarkDirty for an immediate re-render.
+    /// </summary>
+    public void RequestAttractorRegen()
+    {
+        _attractorNeedsRegen = true;
+        _dirty = true;
+        RequestNextFrameRendering();
+    }
+
+    // --- hero render (high-res still to PNG) ---
+    private bool _heroPending;
+    private string? _heroPath;
+    private int _heroWidth, _heroHeight;
+
+    // --- Animation batch render ---
+    private bool _animPending;
+    private string? _animDir;
+    private int _animWidth, _animHeight, _animFrameCount;
+    private double _animFps;
+    private Action<double>? _animApplyAtTime;   // applies interpolated state at time t (seconds)
+
+    /// <summary>Fired (on UI thread) when an animation batch render finishes.</summary>
+    public event Action<string>? AnimationRenderComplete;
+    /// <summary>Fired (on UI thread) periodically during a batch render with (frame, total).</summary>
+    public event Action<int, int>? AnimationProgress;
+
+    /// <summary>
+    /// Render an animation: <paramref name="applyAtTime"/> sets the live params for
+    /// a given playback time (seconds); we sample it at each frame, render at the
+    /// target resolution, and save frame_NNNNN.png into <paramref name="dir"/>.
+    /// Runs synchronously on the next GL callback (the UI will freeze for the
+    /// duration -- acceptable for a test render). Camera is whatever it is now
+    /// (camera animation is a later phase).
+    /// </summary>
+    public void RequestAnimationRender(string dir, int width, int height,
+        double fps, double durationSeconds, Action<double> applyAtTime)
+    {
+        _animDir = dir;
+        _animWidth = width;
+        _animHeight = height;
+        _animFps = fps;
+        _animFrameCount = Math.Max(1, (int)Math.Round(durationSeconds * fps));
+        _animApplyAtTime = applyAtTime;
+        _animPending = true;
+        RequestNextFrameRendering();
+    }
+
+    /// <summary>Raised after a hero render finishes (or fails), with a status string.</summary>
+    public event Action<string>? HeroRenderComplete;
+
+    /// <summary>
+    /// Queue a high-resolution render of the CURRENT view, params, and palette to
+    /// a PNG at <paramref name="path"/>. The render runs on the next GL frame
+    /// (the only time the context is current) via the TDR-safe tiled path.
+    /// </summary>
+    public void RequestHeroRender(string path, int width, int height)
+    {
+        _heroPath = path;
+        _heroWidth = width;
+        _heroHeight = height;
+        _heroPending = true;
+        RequestNextFrameRendering();
+    }
+
+    private const int PreviewWidth = 640;
+    private const int PreviewHeight = 480;
+
+    // --- camera + input state ---
+    private readonly FlyCamera _cam = new(
+        position: new Vector3(4.0f, 3.0f, 4.0f),
+        yaw: -MathF.PI / 4f,   // faces back toward the origin from (4,3,4)
+        pitch: -0.53f);
+
+    // 2D deep-zoom "camera": high-precision center + radius (see DeepZoomView).
+    private readonly DeepZoomView _deepView = new();
+    private readonly HashSet<Key> _keysDown = new();
+    private bool _looking;
+    private Point _lastPointer;
+    private DateTime _lastTick = DateTime.UtcNow;
+
+    private DispatcherTimer? _moveTimer;
+
+    private const float BaseMoveSpeed = 1.5f;   // multiplied by DE-at-camera per second
+    private const float LookSensitivity = 0.005f; // radians per pixel
+
+    public event Action<string>? StatusChanged;
+    private void Status(string text) => StatusChanged?.Invoke(text);
+
+    public FractalView()
+    {
+        Focusable = true;
+        IsHitTestVisible = true;
+        // A timer integrates movement while keys are held and requests redraws.
+        _moveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        _moveTimer.Tick += OnMoveTick;
+        _moveTimer.Start();
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        // Grab focus once we're in the tree so WASD registers without a click.
+        Dispatcher.UIThread.Post(() => Focus(), DispatcherPriority.Loaded);
+    }
+
+    // OpenGlControlBase derives from Control, which has no Background and so is
+    // invisible to pointer hit-testing (it renders via a GPU surface with no
+    // hit-testable content). Implementing ICustomHitTest claims our full bounds
+    // for hit-testing, so pointer events actually reach us. Without this,
+    // keyboard works (focus is separate) but mouse events never arrive.
+    public bool HitTest(Point point) =>
+        point.X >= 0 && point.Y >= 0 && point.X <= Bounds.Width && point.Y <= Bounds.Height;
+
+    // ----------------------------------------------------------------- input
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+        Focus();
+        var props = e.GetCurrentPoint(this).Properties;
+        bool left = props.IsLeftButtonPressed
+                    || props.PointerUpdateKind == PointerUpdateKind.LeftButtonPressed;
+        if (left)
+        {
+            _looking = true;
+            _lastPointer = e.GetPosition(this);
+            e.Pointer.Capture(this);
+        }
+    }
+
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+        if (!_looking) return;
+        var pos = e.GetPosition(this);
+        var dx = (float)(pos.X - _lastPointer.X);
+        var dy = (float)(pos.Y - _lastPointer.Y);
+        _lastPointer = pos;
+        if (ActiveType == FractalType.DeepZoom)
+        {
+            // Drag-pan the complex plane. Height is the displayed control height,
+            // so the pan tracks the cursor as a fraction of the view regardless of
+            // the fixed preview resolution.
+            _deepView.PanPixels(dx, dy, Math.Max(1, (int)Bounds.Height));
+            _dirty = true;
+            RequestNextFrameRendering();
+            return;
+        }
+        // Drag right -> look right (yaw+); drag up -> look up (pitch+).
+        _cam.Look(dx * LookSensitivity, -dy * LookSensitivity);
+        _dirty = true;
+        RequestNextFrameRendering();
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        if (_looking)
+        {
+            _looking = false;
+            e.Pointer.Capture(null);
+        }
+    }
+
+    protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
+    {
+        base.OnPointerWheelChanged(e);
+        if (ActiveType != FractalType.DeepZoom) return;
+        // Stepped zoom: each notch scales the radius. A radius change triggers a
+        // reference-orbit recompute in the pipeline (per the deep-zoom design).
+        double factor = e.Delta.Y > 0 ? 0.8 : 1.25;   // up = zoom in
+        _deepView.ZoomBy(factor);
+        _dirty = true;
+        RequestNextFrameRendering();
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        _keysDown.Add(e.Key);
+    }
+
+    protected override void OnKeyUp(KeyEventArgs e)
+    {
+        base.OnKeyUp(e);
+        _keysDown.Remove(e.Key);
+    }
+
+    private void OnMoveTick(object? sender, EventArgs e)
+    {
+        if (ActiveType == FractalType.DeepZoom) return;   // 2D: mouse pan/zoom, no WASD fly
+
+        var now = DateTime.UtcNow;
+        float dt = (float)(now - _lastTick).TotalSeconds;
+        _lastTick = now;
+        if (dt <= 0f || dt > 0.1f) dt = 0.016f; // clamp hitches
+
+        Vector3 local = Vector3.Zero;
+        if (_keysDown.Contains(Key.W)) local.Z += 1;
+        if (_keysDown.Contains(Key.S)) local.Z -= 1;
+        if (_keysDown.Contains(Key.D)) local.X += 1;
+        if (_keysDown.Contains(Key.A)) local.X -= 1;
+        if (_keysDown.Contains(Key.E)) local.Y += 1;
+        if (_keysDown.Contains(Key.Q)) local.Y -= 1;
+
+        if (local == Vector3.Zero) return;
+        local = Vector3.Normalize(local);
+
+        // Speed scales with distance to the surface: glide slowly near detail,
+        // travel fast in open space. Clamp so we never freeze or rocket.
+        float de = ActiveType switch
+        {
+            FractalType.Kleinian => KleinianDE.Estimate(_cam.Position, Kleinian.ToParams()),
+            FractalType.Kifs => KifsDE.Estimate(_cam.Position, Kifs.ToParams()),
+            // The attractor has no cheap closed-form DE (it lives in the hash),
+            // and is viewed from outside, so a steady mid-speed glide is fine.
+            FractalType.Attractor => 1.0f,
+            FractalType.Mandelbulb => MandelbulbDE.Estimate(_cam.Position, Mandelbulb.ToParams()),
+            FractalType.QuaternionJulia => QuaternionJuliaDE.Estimate(_cam.Position, QuaternionJulia.ToParams()),
+            FractalType.RotBox => RotBoxDE.Estimate(_cam.Position, RotBox.ToParams()),
+            FractalType.Hybrid => HybridDE.Estimate(_cam.Position, Hybrid.ToParams()),
+            FractalType.QJBox => QJBoxDE.Estimate(_cam.Position, QJBox.ToParams()),
+            FractalType.Menger => MengerDE.Estimate(_cam.Position, Menger.ToParams()),
+            FractalType.Bicomplex => BicomplexDE.Estimate(_cam.Position, Bicomplex.ToParams()),
+            FractalType.Apollonian => 1.0f,
+            // Phoenix: same situation as Apollonian -- numerical-gradient DE only,
+            // no cheap closed-form CPU DE. Could port one later if needed.
+            FractalType.Phoenix => 1.0f,
+            // Biomorph: same Mandelbulb-style scalar-derivative DE as Phoenix,
+            // no closed-form CPU DE port done.
+            FractalType.Biomorph => 1.0f,
+            // Mosely: exact GPU DE, but no CPU port yet -> steady glide.
+            FractalType.Mosely => 1.0f,
+            _ => MandelboxDE.Estimate(_cam.Position, Fractal.ToParams()),
+        };
+        float speed = BaseMoveSpeed * Math.Clamp(de, 0.02f, 4.0f);
+        _cam.Move(local, speed * dt);
+
+        _dirty = true;
+        RequestNextFrameRendering();
+    }
+
+    // ------------------------------------------------------------------- GL
+    protected override void OnOpenGlInit(GlInterface gl)
+    {
+        try
+        {
+            _gl = new Gl(gl.GetProcAddress);
+            Status($"GL {_gl.GetString(GlConst.Version)} | {_gl.GetString(GlConst.Renderer)}");
+            _pipeline = new RaymarchPipeline(_gl);
+            _boxRenderer = new GpuMandelboxRenderer(_gl, _pipeline);
+            _kifsRenderer = new GpuKifsRenderer(_gl, _pipeline);
+            _kleinianRenderer = new GpuKleinianRenderer(_gl, _pipeline);
+            _attractorRenderer = new GpuAttractorRenderer(_gl, _pipeline);
+            _mandelbulbRenderer = new GpuMandelbulbRenderer(_gl, _pipeline);
+            _qjuliaRenderer = new GpuQuaternionJuliaRenderer(_gl, _pipeline);
+            _rotboxRenderer = new GpuRotBoxRenderer(_gl, _pipeline);
+            _hybridRenderer = new GpuHybridRenderer(_gl, _pipeline);
+            _qjboxRenderer = new GpuQJBoxRenderer(_gl, _pipeline);
+            _mengerRenderer = new GpuMengerRenderer(_gl, _pipeline);
+            _bicomplexRenderer = new GpuBicomplexRenderer(_gl, _pipeline);
+            _apollonianRenderer = new GpuApollonianRenderer(_gl, _pipeline);
+            _phoenixRenderer = new GpuPhoenixRenderer(_gl, _pipeline);
+            _biomorphRenderer = new GpuBiomorphRenderer(_gl, _pipeline);
+            _moselyRenderer = new GpuMoselyRenderer(_gl, _pipeline);
+            _deepPipeline = new DeepZoomPipeline(_gl);
+
+            _texture = _gl.GenTexture();
+            _gl.BindTexture(GlConst.Texture2D, _texture);
+            _gl.TexParameteri(GlConst.Texture2D, GlConst.TextureMinFilter, (int)GlConst.Linear);
+            _gl.TexParameteri(GlConst.Texture2D, GlConst.TextureMagFilter, (int)GlConst.Linear);
+            _gl.TexParameteri(GlConst.Texture2D, GlConst.TextureWrapS, (int)GlConst.ClampToEdge);
+            _gl.TexParameteri(GlConst.Texture2D, GlConst.TextureWrapT, (int)GlConst.ClampToEdge);
+            _gl.BindTexture(GlConst.Texture2D, 0);
+
+            _vao = _gl.GenVertexArray();
+            _blitProgram = _gl.CreateGraphicsProgram(BlitVertexSrc, BlitFragmentSrc);
+            _samplerLocation = _gl.GetUniformLocation(_blitProgram, "uTex");
+            _ready = true;
+        }
+        catch (Exception ex)
+        {
+            _ready = false;
+            Status($"init failed: {ex.Message}");
+        }
+    }
+
+    protected override void OnOpenGlRender(GlInterface gl, int fb)
+    {
+        if (!_ready || _gl == null || _pipeline == null || _boxRenderer == null || _kifsRenderer == null || _kleinianRenderer == null || _attractorRenderer == null || _mandelbulbRenderer == null || _qjuliaRenderer == null || _rotboxRenderer == null || _hybridRenderer == null || _qjboxRenderer == null || _mengerRenderer == null || _bicomplexRenderer == null || _apollonianRenderer == null || _phoenixRenderer == null || _biomorphRenderer == null || _moselyRenderer == null || _deepPipeline == null)
+        {
+            _gl?.BindFramebuffer(GlConst.Framebuffer, (uint)fb);
+            _gl?.ClearColor(0.1f, 0.1f, 0.1f, 1f);
+            _gl?.Clear(GlConst.ColorBufferBit);
+            return;
+        }
+
+        // Hero render: the GL context is current here, so do the high-res tiled
+        // render now, save it, and fall through to a normal preview render so the
+        // on-screen view (and the preview-size buffers) are restored afterward.
+        if (_heroPending && _heroPath != null)
+        {
+            try
+            {
+                SkiaSharp.SKBitmap bmp = RenderActiveTo(_heroWidth, _heroHeight);
+                Parsec.Rendering.Output.ImageOutput.SavePng(bmp, _heroPath);
+                bmp.Dispose();
+
+                string savedTo = _heroPath;
+                Dispatcher.UIThread.Post(() =>
+                    HeroRenderComplete?.Invoke($"Saved {_heroWidth}x{_heroHeight} render to {savedTo}"));
+            }
+            catch (Exception ex)
+            {
+                string msg = ex.Message;
+                Dispatcher.UIThread.Post(() =>
+                    HeroRenderComplete?.Invoke($"Hero render failed: {msg}"));
+            }
+            finally
+            {
+                _heroPending = false;
+                _heroPath = null;
+                _dirty = true;   // restore the preview-size view next
+            }
+        }
+
+        // Animation batch render: run the whole frame loop here (GL context is
+        // current). Synchronous -- the UI freezes until done (fine for a test).
+        if (_animPending && _animDir != null && _animApplyAtTime != null)
+        {
+            int total = _animFrameCount;
+            string dir = _animDir;
+            try
+            {
+                System.IO.Directory.CreateDirectory(dir);
+                for (int frame = 0; frame < total; frame++)
+                {
+                    double t = frame / _animFps;
+                    _animApplyAtTime(t);                       // set live params for this time
+                    using var bmp = RenderActiveTo(_animWidth, _animHeight);
+                    string path = System.IO.Path.Combine(dir, $"frame_{frame:D5}.png");
+                    Parsec.Rendering.Output.ImageOutput.SavePng(bmp, path);
+
+                    int done = frame + 1;
+                    if (done == total || done % 5 == 0)
+                        Dispatcher.UIThread.Post(() => AnimationProgress?.Invoke(done, total));
+                }
+                Dispatcher.UIThread.Post(() =>
+                    AnimationRenderComplete?.Invoke($"Rendered {total} frames to {dir}"));
+            }
+            catch (Exception ex)
+            {
+                string msg = ex.Message;
+                Dispatcher.UIThread.Post(() =>
+                    AnimationRenderComplete?.Invoke($"Animation render failed: {msg}"));
+            }
+            finally
+            {
+                _animPending = false;
+                _animDir = null;
+                _animApplyAtTime = null;
+                _dirty = true;
+            }
+        }
+
+        // Attractor (re)generation: the expensive integrate + hash + SSBO upload.
+        // Only runs when generation params changed (the "Generate" action), never
+        // per frame. The GL context is current here, which SetAttractor needs.
+        if (ActiveType == FractalType.Attractor && _attractorNeedsRegen)
+        {
+            try
+            {
+                var ap = Attractor.ToParams();
+                var traj = Parsec.Core.Attractors.ThomasAttractor.Generate(ap);
+                _attractorHash = Parsec.Core.Attractors.AttractorHash.Build(traj, gridSize: 96);
+                _attractorRenderer.SetAttractor(_attractorHash);
+
+                // Frame the camera to the cloud bounds on (re)generation so the
+                // new shape is in view; the user can then fly around freely.
+                var lo = _attractorHash.BoundsMin;
+                var hi = _attractorHash.BoundsMax;
+                var center = (lo + hi) * 0.5f;
+                float span = (hi - lo).Length();
+                _cam.Position = center + new Vector3(0.2f, 0.35f, 1.0f) * span * 0.8f;
+                _cam.LookAt(center);
+
+                _attractorNeedsRegen = false;
+                _dirty = true;
+                Status($"Generated attractor: {traj.Count} points");
+            }
+            catch (Exception ex)
+            {
+                _attractorNeedsRegen = false;
+                Status($"Attractor generate failed: {ex.Message}");
+            }
+        }
+
+        if (_dirty && !(ActiveType == FractalType.Attractor && _attractorHash == null))
+        {
+            var camera = _cam.ToCamera(PreviewWidth, PreviewHeight);
+            uint[] pixels = ActiveType switch
+            {
+                FractalType.DeepZoom => _deepPipeline.Render(_deepView,
+                    PreviewWidth, PreviewHeight, Palette.ToParams(),
+                    new Color(0.02f, 0.03f, 0.07f), heroSamples: 1, tileRows: 64),
+                FractalType.Mandelbulb => _mandelbulbRenderer.RenderToBuffer(Mandelbulb.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(210, 175, 140),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.QuaternionJulia => _qjuliaRenderer.RenderToBuffer(QuaternionJulia.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(210, 180, 150),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.RotBox => _rotboxRenderer.RenderToBuffer(RotBox.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(190, 175, 155),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.Hybrid => _hybridRenderer.RenderToBuffer(Hybrid.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(190, 170, 145),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.QJBox => _qjboxRenderer.RenderToBuffer(QJBox.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(195, 170, 145),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.Menger => _mengerRenderer.RenderToBuffer(Menger.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(195, 170, 145),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.Bicomplex => _bicomplexRenderer.RenderToBuffer(Bicomplex.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(200, 175, 150),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.Apollonian => _apollonianRenderer.RenderToBuffer(Apollonian.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(200, 175, 150),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.Phoenix => _phoenixRenderer.RenderToBuffer(Phoenix.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(210, 180, 150),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.Biomorph => _biomorphRenderer.RenderToBuffer(Biomorph.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(220, 180, 140),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.Attractor => _attractorRenderer.RenderToBuffer(Attractor.ToRenderParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(230, 120, 70),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.Kleinian => _kleinianRenderer.RenderToBuffer(Kleinian.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(150, 125, 100),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.Kifs => _kifsRenderer.RenderToBuffer(Kifs.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(150, 125, 100),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.Mosely => _moselyRenderer.RenderToBuffer(Mosely.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(170, 150, 130),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                _ => _boxRenderer.RenderToBuffer(Fractal.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(150, 125, 100),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+            };
+
+            _gl.BindTexture(GlConst.Texture2D, _texture);
+            unsafe
+            {
+                fixed (uint* p = pixels)
+                {
+                    _gl.TexImage2D(GlConst.Texture2D, 0, (int)GlConst.Rgba8,
+                        PreviewWidth, PreviewHeight, 0,
+                        GlConst.Rgba, GlConst.UnsignedByte, (IntPtr)p);
+                }
+            }
+            _dirty = false;
+            Status($"pos ({_cam.Position.X:F2}, {_cam.Position.Y:F2}, {_cam.Position.Z:F2})  ·  WASD+QE move · drag to look");
+        }
+
+        _gl.BindFramebuffer(GlConst.Framebuffer, (uint)fb);
+        var size = GetPixelSize();
+        // Clear the whole control to the surround color first.
+        _gl.Viewport(0, 0, size.w, size.h);
+        _gl.ClearColor(0.02f, 0.03f, 0.07f, 1f);  // match render bg (dark blue)
+        _gl.Clear(GlConst.ColorBufferBit);
+
+        // Letterbox: fit the preview's aspect ratio inside the control, centered,
+        // so the fractal isn't stretched when the view area isn't 4:3.
+        float previewAspect = (float)PreviewWidth / PreviewHeight;
+        float viewAspect = (float)size.w / size.h;
+        int vpW, vpH, vpX, vpY;
+        if (viewAspect > previewAspect)
+        {
+            // Control is wider than preview: bars on left/right.
+            vpH = size.h;
+            vpW = (int)(size.h * previewAspect);
+            vpX = (size.w - vpW) / 2;
+            vpY = 0;
+        }
+        else
+        {
+            // Control is taller than preview: bars on top/bottom.
+            vpW = size.w;
+            vpH = (int)(size.w / previewAspect);
+            vpX = 0;
+            vpY = (size.h - vpH) / 2;
+        }
+        _gl.Viewport(vpX, vpY, vpW, vpH);
+
+        _gl.UseProgram(_blitProgram);
+        _gl.ActiveTexture(GlConst.Texture0);
+        _gl.BindTexture(GlConst.Texture2D, _texture);
+        _gl.Uniform1i(_samplerLocation, 0);
+        _gl.BindVertexArray(_vao);
+        _gl.DrawArrays(GlConst.Triangles, 0, 3);
+        _gl.BindVertexArray(0);
+    }
+
+    protected override void OnOpenGlDeinit(GlInterface gl)
+    {
+        _moveTimer?.Stop();
+        _moveTimer = null;
+        if (_gl == null) return;
+        if (_texture != 0) _gl.DeleteTexture(_texture);
+        if (_vao != 0) _gl.DeleteVertexArray(_vao);
+        if (_blitProgram != 0) _gl.DeleteProgram(_blitProgram);
+        _boxRenderer?.Dispose();
+        _kifsRenderer?.Dispose();
+        _kleinianRenderer?.Dispose();
+        _attractorRenderer?.Dispose();
+        _mandelbulbRenderer?.Dispose();
+        _qjuliaRenderer?.Dispose();
+        _rotboxRenderer?.Dispose();
+        _hybridRenderer?.Dispose();
+        _qjboxRenderer?.Dispose();
+        _mengerRenderer?.Dispose();
+        _bicomplexRenderer?.Dispose();
+        _apollonianRenderer?.Dispose();
+        _phoenixRenderer?.Dispose();
+        _biomorphRenderer?.Dispose();
+        _moselyRenderer?.Dispose();
+        _deepPipeline?.Dispose();
+        _pipeline?.Dispose();
+        _texture = _vao = _blitProgram = 0;
+        _boxRenderer = null;
+        _kifsRenderer = null;
+        _kleinianRenderer = null;
+        _attractorRenderer = null;
+        _mandelbulbRenderer = null;
+        _qjuliaRenderer = null;
+        _rotboxRenderer = null;
+        _hybridRenderer = null;
+        _qjboxRenderer = null;
+        _mengerRenderer = null;
+        _bicomplexRenderer = null;
+        _apollonianRenderer = null;
+        _phoenixRenderer = null;
+        _biomorphRenderer = null;
+        _moselyRenderer = null;
+        _deepPipeline = null;
+        _pipeline = null;
+        _gl = null;
+        _ready = false;
+    }
+
+    private (int w, int h) GetPixelSize()
+    {
+        var scaling = Avalonia.Controls.TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
+        int w = Math.Max(1, (int)(Bounds.Width * scaling));
+        int h = Math.Max(1, (int)(Bounds.Height * scaling));
+        return (w, h);
+    }
+
+    private RaymarchSettings PreviewSettings() => new(
+        MaxSteps: 160, HitEpsilon: 1.5e-3f, MaxDistance: 40f, NormalEpsilon: 2e-3f,
+        EnableSoftShadows: false, ShadowSteps: 0, ShadowSoftness: 12f,
+        EnableAmbientOcclusion: true, AOSamples: 4, AOStepDistance: 0.05f, AOIntensity: 1.0f,
+        HeroSamples: 1,
+        EnableReflections: Reflection.Bounces > 0,
+        ReflectionBounces: Reflection.Bounces,
+        Gloss: Reflection.Gloss,
+        F0: Reflection.F0,
+        LightIntensity: Light.Intensity);
+
+    // High quality for the hero still: more march steps, finer hit/normal
+    // epsilon, soft shadows on, more AO samples. The tiled path keeps it
+    // TDR-safe even at 4K (each tile is width x 32 px with a Finish() between).
+    /// <summary>
+    /// Render the active fractal at the given resolution from the current camera
+    /// and live params, using hero-quality settings. Shared by the single hero
+    /// render and the animation batch. Must be called with the GL context current.
+    /// </summary>
+    private SkiaSharp.SKBitmap RenderActiveTo(int width, int height)
+    {
+        var cam = _cam.ToCamera(width, height);
+        var bg = new Color(0.02f, 0.03f, 0.07f);
+        var light = Light.ToDirection();
+        var pal = Palette.ToParams();
+        return ActiveType switch
+        {
+            FractalType.DeepZoom => DeepZoomBitmap(width, height),
+            FractalType.Mandelbulb => _mandelbulbRenderer!.Render(Mandelbulb.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(210, 175, 140), light, pal, tileRows: 32),
+            FractalType.QuaternionJulia => _qjuliaRenderer!.Render(QuaternionJulia.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(210, 180, 150), light, pal, tileRows: 32),
+            FractalType.RotBox => _rotboxRenderer!.Render(RotBox.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(190, 175, 155), light, pal, tileRows: 32),
+            FractalType.Hybrid => _hybridRenderer!.Render(Hybrid.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(190, 170, 145), light, pal, tileRows: 32),
+            FractalType.QJBox => _qjboxRenderer!.Render(QJBox.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(195, 170, 145), light, pal, tileRows: 32),
+            FractalType.Menger => _mengerRenderer!.Render(Menger.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(195, 170, 145), light, pal, tileRows: 32),
+            FractalType.Bicomplex => _bicomplexRenderer!.Render(Bicomplex.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(200, 175, 150), light, pal, tileRows: 32),
+            FractalType.Apollonian => _apollonianRenderer!.Render(Apollonian.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(200, 175, 150), light, pal, tileRows: 32),
+            FractalType.Phoenix => _phoenixRenderer!.Render(Phoenix.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(210, 180, 150), light, pal, tileRows: 32),
+            FractalType.Biomorph => _biomorphRenderer!.Render(Biomorph.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(220, 180, 140), light, pal, tileRows: 32),
+            FractalType.Attractor => _attractorRenderer!.Render(Attractor.ToRenderParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(230, 120, 70), light, pal, tileRows: 32),
+            FractalType.Kleinian => _kleinianRenderer!.Render(Kleinian.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(150, 125, 100), light, pal, tileRows: 32),
+            FractalType.Kifs => _kifsRenderer!.Render(Kifs.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(150, 125, 100), light, pal, tileRows: 32),
+            FractalType.Mosely => _moselyRenderer!.Render(Mosely.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(170, 150, 130), light, pal, tileRows: 32),
+            _ => _boxRenderer!.Render(Fractal.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(150, 125, 100), light, pal, tileRows: 32),
+        };
+    }
+
+    // Deep-zoom renders straight to a packed RGBA8 buffer (no SKBitmap-returning
+    // renderer), so wrap it the same way GpuMandelbulbRenderer.Render does.
+    private SkiaSharp.SKBitmap DeepZoomBitmap(int width, int height)
+    {
+        uint[] pixels = _deepPipeline!.Render(_deepView, width, height,
+            Palette.ToParams(), new Color(0.02f, 0.03f, 0.07f),
+            heroSamples: Math.Max(1, HeroSampleCount), tileRows: 32);
+        var info = new SkiaSharp.SKImageInfo(width, height,
+            SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Premul);
+        var bitmap = new SkiaSharp.SKBitmap(info);
+        var bytes = new byte[pixels.Length * 4];
+        System.Buffer.BlockCopy(pixels, 0, bytes, 0, bytes.Length);
+        System.Runtime.InteropServices.Marshal.Copy(bytes, 0, bitmap.GetPixels(), bytes.Length);
+        return bitmap;
+    }
+
+    private RaymarchSettings HeroSettings() => new(
+        MaxSteps: 400, HitEpsilon: 6e-7f, MaxDistance: 50f, NormalEpsilon: 6e-7f,
+        EnableSoftShadows: true, ShadowSteps: 64, ShadowSoftness: 14f,
+        EnableAmbientOcclusion: true, AOSamples: 6, AOStepDistance: 0.04f, AOIntensity: 1.0f,
+        HeroSamples: Math.Max(1, HeroSampleCount),
+        EnableReflections: Reflection.Bounces > 0,
+        ReflectionBounces: Reflection.Bounces,
+        Gloss: Reflection.Gloss,
+        F0: Reflection.F0,
+        LightIntensity: Light.Intensity);
+
+    private const string BlitVertexSrc = @"#version 430 core
+out vec2 vUv;
+void main() {
+    vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+    vUv = p;
+    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}";
+
+    private const string BlitFragmentSrc = @"#version 430 core
+in vec2 vUv;
+out vec4 fragColor;
+uniform sampler2D uTex;
+void main() {
+    fragColor = texture(uTex, vec2(vUv.x, 1.0 - vUv.y));
+}";
+}

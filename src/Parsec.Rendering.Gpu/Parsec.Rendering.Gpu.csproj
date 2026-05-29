@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Parsec.Rendering.Gpu</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTK" Version="4.9.4" />
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Parsec.Core\Parsec.Core.csproj" />
+    <ProjectReference Include="..\Parsec.Rendering\Parsec.Rendering.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Explicit list rather than glob: MSBuild's wildcard evaluation can be
+      stale across incremental builds when new files are added.
+    -->
+    <EmbeddedResource Include="Shaders\smoke.comp" />
+    <EmbeddedResource Include="Shaders\de_core.glsl" />
+    <EmbeddedResource Include="Shaders\de_validate_main.glsl" />
+    <EmbeddedResource Include="Shaders\raymarch_main.glsl" />
+    <EmbeddedResource Include="Shaders\mandelbox_core.glsl" />
+    <EmbeddedResource Include="Shaders\kifs_core.glsl" />
+    <EmbeddedResource Include="Shaders\kleinian_core.glsl" />
+    <EmbeddedResource Include="Shaders\attractor_core.glsl" />
+    <EmbeddedResource Include="Shaders\mandelbulb_core.glsl" />
+    <EmbeddedResource Include="Shaders\quaternion_julia_core.glsl" />
+    <EmbeddedResource Include="Shaders\rotbox_core.glsl" />
+    <EmbeddedResource Include="Shaders\hybrid_core.glsl" />
+    <EmbeddedResource Include="Shaders\qjbox_core.glsl" />
+    <EmbeddedResource Include="Shaders\menger_core.glsl" />
+    <EmbeddedResource Include="Shaders\bicomplex_core.glsl" />
+    <EmbeddedResource Include="Shaders\apollonian_core.glsl" />
+    <EmbeddedResource Include="Shaders\phoenix_core.glsl" />
+    <EmbeddedResource Include="Shaders\biomorph_core.glsl" />
+    <EmbeddedResource Include="Shaders\mosely_core.glsl" />
+    <EmbeddedResource Include="Shaders\deepzoom_delta.glsl" />
+    <EmbeddedResource Include="Shaders\deepzoom_color.glsl" />
+  </ItemGroup>
+
+</Project>

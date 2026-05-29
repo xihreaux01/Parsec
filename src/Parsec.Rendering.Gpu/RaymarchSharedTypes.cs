@@ -1,0 +1,83 @@
+using System.Numerics;
+using System.Runtime.InteropServices;
+
+namespace Parsec.Rendering.Raymarching;
+
+/// <summary>
+/// Per-fractal parameters (binding 1). Layout matches the FoldParams SSBO
+/// in every *_core.glsl. The semantics of BoxParams / SurfParams / Rot vary
+/// by fractal -- each Gpu*Renderer documents how it packs its own values.
+/// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+internal struct FoldParamsGpu
+{
+    public int Iterations;
+    public int Mode;        // unused by most cores; reserved
+    public int JuliaMode;   // unused by most cores; reserved
+    public int Pad0;
+
+    public Vector4 BoxParams;
+    public Vector4 SurfParams;
+    public Vector4 JuliaCVec;
+    public Vector4 Rot;
+    public Vector4 BoundSphere;
+}
+
+/// <summary>
+/// Camera + lighting + tile + palette + AA jitter (binding 4). Layout matches
+/// the RenderParams SSBO in raymarch_main.glsl. Uploaded once per tile.
+///
+/// SubpixelJitter is the new field for SSAA: (0,0) for preview/single-sample,
+/// Halton-jittered for multi-sample hero renders.
+/// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+internal struct RenderParamsGpu
+{
+    public int ImageWidth, ImageHeight, RowOffset, RowCount;
+    public Vector4 CamPos, CamForward, CamRight, CamUp, TanFov;
+    public Vector4 LightDir, Background, Surface;
+    public Vector4 MarchA, MarchB;
+    public int MarchI0, MarchI1, MarchI2, MarchI3;
+    public Vector4 PalBase, PalAmp, PalPhase, TrapMix;
+    public Vector4 SubpixelJitter;   // (jx, jy, _, _) in [-0.5, 0.5]
+    public Vector4 ReflectParams;    // (enable, maxBounces, gloss, F0)
+}
+
+/// <summary>
+/// Parameters for the clear/finalize passes (binding 3). Tells the AA helper
+/// shaders how big the image is and how many samples to average. Bindings 2/3
+/// are used (not 6/7) to stay clear of the attractor core's trajectory/hash/
+/// index SSBOs at bindings 6/7/8.
+/// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+internal struct AAParamsGpu
+{
+    public int Width;
+    public int Height;
+    public int SampleCount;
+    public int Pad0;
+}
+
+/// <summary>
+/// Camera frame built once per render call. Was previously duplicated in
+/// every Gpu*Renderer.cs as a private nested struct; lifted here so all the
+/// renderers can share the same construction.
+/// </summary>
+internal readonly struct CameraFrame
+{
+    public readonly Vector3 Forward, Right, Up;
+    public readonly float TanFovX, TanFovY;
+
+    private CameraFrame(Vector3 f, Vector3 r, Vector3 u, float tx, float ty)
+    { Forward = f; Right = r; Up = u; TanFovX = tx; TanFovY = ty; }
+
+    public static CameraFrame Build(Camera3D cam, int w, int h)
+    {
+        var fwd = Vector3.Normalize(cam.LookAt - cam.Position);
+        var right = Vector3.Normalize(Vector3.Cross(fwd, cam.Up));
+        var up = Vector3.Cross(right, fwd);
+        float tanY = MathF.Tan(cam.VerticalFovRadians * 0.5f);
+        float tanX = tanY * ((float)w / h);
+        return new CameraFrame(fwd, right, up, tanX, tanY);
+    }
+}

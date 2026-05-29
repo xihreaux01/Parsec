@@ -1,0 +1,315 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.App\\Parsec.App.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.App\\Parsec.App.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.App\\Parsec.App.csproj",
+        "projectName": "parsec-app",
+        "projectPath": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.App\\Parsec.App.csproj",
+        "packagesPath": "C:\\Users\\yevoc\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.App\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\yevoc\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "framework": "net9.0",
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Core\\Parsec.Core.csproj": {
+                "projectPath": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Core\\Parsec.Core.csproj"
+              },
+              "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Rendering.Gpu\\Parsec.Rendering.Gpu.csproj": {
+                "projectPath": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Rendering.Gpu\\Parsec.Rendering.Gpu.csproj"
+              },
+              "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Rendering\\Parsec.Rendering.csproj": {
+                "projectPath": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Rendering\\Parsec.Rendering.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.200"
+      },
+      "frameworks": {
+        "net9.0": {
+          "framework": "net9.0",
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Avalonia": {
+              "target": "Package",
+              "version": "[11.2.0, )"
+            },
+            "Avalonia.Desktop": {
+              "target": "Package",
+              "version": "[11.2.0, )"
+            },
+            "Avalonia.Fonts.Inter": {
+              "target": "Package",
+              "version": "[11.2.0, )"
+            },
+            "Avalonia.Themes.Fluent": {
+              "target": "Package",
+              "version": "[11.2.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Core\\Parsec.Core.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Core\\Parsec.Core.csproj",
+        "projectName": "Parsec.Core",
+        "projectPath": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Core\\Parsec.Core.csproj",
+        "packagesPath": "C:\\Users\\yevoc\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Core\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\yevoc\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "framework": "net9.0",
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.200"
+      },
+      "frameworks": {
+        "net9.0": {
+          "framework": "net9.0",
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Rendering.Gpu\\Parsec.Rendering.Gpu.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Rendering.Gpu\\Parsec.Rendering.Gpu.csproj",
+        "projectName": "Parsec.Rendering.Gpu",
+        "projectPath": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Rendering.Gpu\\Parsec.Rendering.Gpu.csproj",
+        "packagesPath": "C:\\Users\\yevoc\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Rendering.Gpu\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\yevoc\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "framework": "net9.0",
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Core\\Parsec.Core.csproj": {
+                "projectPath": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Core\\Parsec.Core.csproj"
+              },
+              "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Rendering\\Parsec.Rendering.csproj": {
+                "projectPath": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Rendering\\Parsec.Rendering.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.200"
+      },
+      "frameworks": {
+        "net9.0": {
+          "framework": "net9.0",
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "OpenTK": {
+              "target": "Package",
+              "version": "[4.9.4, )"
+            },
+            "SkiaSharp": {
+              "target": "Package",
+              "version": "[3.119.4, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Rendering\\Parsec.Rendering.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Rendering\\Parsec.Rendering.csproj",
+        "projectName": "Parsec.Rendering",
+        "projectPath": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Rendering\\Parsec.Rendering.csproj",
+        "packagesPath": "C:\\Users\\yevoc\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Rendering\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\yevoc\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "framework": "net9.0",
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Core\\Parsec.Core.csproj": {
+                "projectPath": "C:\\Users\\yevoc\\Documents\\Github\\Parsec\\Parsec\\src\\Parsec.Core\\Parsec.Core.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.200"
+      },
+      "frameworks": {
+        "net9.0": {
+          "framework": "net9.0",
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "SkiaSharp": {
+              "target": "Package",
+              "version": "[3.119.4, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

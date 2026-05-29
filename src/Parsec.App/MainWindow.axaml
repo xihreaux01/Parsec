@@ -1,0 +1,77 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:Parsec.App"
+        x:Class="Parsec.App.MainWindow"
+        WindowState="Maximized"
+        Title="Parsec — Fractal Explorer"
+        Background="#15151a">
+  <Grid ColumnDefinitions="*,280">
+    <Grid Grid.Column="0" RowDefinitions="*,Auto">
+      <Grid Grid.Row="0">
+        <app:FractalView Name="FractalView" />
+        <TextBlock Name="StatusText"
+                   IsHitTestVisible="False"
+                   HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                   Margin="8" Foreground="#80FFFFFF" FontFamily="monospace"
+                   Text="initializing…" />
+      </Grid>
+      <Border Name="BankHost" Grid.Row="1" />
+    </Grid>
+    <Grid Grid.Column="1" RowDefinitions="Auto,*" Background="#222226">
+      <StackPanel Grid.Row="0" Margin="12,12,12,0" Spacing="4">
+        <TextBlock Text="FRACTAL" Foreground="#9a9ab0" FontSize="11" FontWeight="SemiBold" />
+        <ComboBox Name="FractalSelector" HorizontalAlignment="Stretch">
+          <ComboBoxItem>Amazing IFS (KIFS)</ComboBoxItem>
+          <ComboBoxItem>AmazingBox</ComboBoxItem>
+          <ComboBoxItem>Pseudo-Kleinian</ComboBoxItem>
+          <ComboBoxItem>Thomas Attractor</ComboBoxItem>
+          <ComboBoxItem>Mandelbulb</ComboBoxItem>
+          <ComboBoxItem>Quaternion Julia</ComboBoxItem>
+          <ComboBoxItem>Rotated Mandelbox</ComboBoxItem>
+          <ComboBoxItem>Hybrid (box+bulb)</ComboBoxItem>
+          <ComboBoxItem>QJulia × Box (half-cut)</ComboBoxItem>
+          <ComboBoxItem>Folded Menger</ComboBoxItem>
+          <ComboBoxItem>Bicomplex Julia</ComboBoxItem>
+          <ComboBoxItem>Apollonian Gasket</ComboBoxItem>
+          <ComboBoxItem>Phoenix</ComboBoxItem>
+          <ComboBoxItem>Biomorph</ComboBoxItem>
+          <ComboBoxItem>Mosely Snowflake</ComboBoxItem>
+          <ComboBoxItem>Deep Mandelbrot (2D)</ComboBoxItem>
+        </ComboBox>
+        <Button Name="GenerateButton" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center" Margin="0,8,0,0"
+                Content="Generate Attractor" IsVisible="False" />
+        <TextBlock Text="HERO AA" Foreground="#9a9ab0" FontSize="11"
+                   FontWeight="SemiBold" Margin="0,8,0,0" />
+        <ComboBox Name="HeroSamplesSelector" HorizontalAlignment="Stretch"
+                  SelectedIndex="0">
+          <ComboBoxItem>1× (no AA)</ComboBoxItem>
+          <ComboBoxItem>4× SSAA</ComboBoxItem>
+          <ComboBoxItem>9× SSAA</ComboBoxItem>
+          <ComboBoxItem>16× SSAA</ComboBoxItem>
+        </ComboBox>
+        <TextBlock Text="RESOLUTION" Foreground="#9a9ab0" FontSize="11"
+                   FontWeight="SemiBold" Margin="0,8,0,0" />
+        <ComboBox Name="ResolutionSelector" HorizontalAlignment="Stretch"
+                  SelectedIndex="1">
+          <ComboBoxItem>2K (2048×1536)</ComboBoxItem>
+          <ComboBoxItem>4K (4096×3072)</ComboBoxItem>
+          <ComboBoxItem>8K (8192×6144)</ComboBoxItem>
+        </ComboBox>
+        <Button Name="HeroButton" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center" Margin="0,8,0,0"
+                Content="Save Hero Render" />
+        <Button Name="TestRenderButton" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center" Margin="0,8,0,0"
+                Content="Test Render (720p video)" />
+        <Grid ColumnDefinitions="*,*" Margin="0,8,0,0">
+          <Button Name="SaveAnimButton" Grid.Column="0" HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Center" Margin="0,0,2,0" Content="Save Anim" />
+          <Button Name="LoadAnimButton" Grid.Column="1" HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Center" Margin="2,0,0,0" Content="Load Anim" />
+        </Grid>
+      </StackPanel>
+      <Border Name="PanelHost" Grid.Row="1" />
+    </Grid>
+  </Grid>
+</Window>

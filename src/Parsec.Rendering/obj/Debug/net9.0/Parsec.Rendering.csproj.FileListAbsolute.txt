@@ -1,0 +1,15 @@
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\bin\Debug\net9.0\Parsec.Rendering.deps.json
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\bin\Debug\net9.0\Parsec.Rendering.dll
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\bin\Debug\net9.0\Parsec.Rendering.pdb
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\bin\Debug\net9.0\Parsec.Core.dll
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\bin\Debug\net9.0\Parsec.Core.pdb
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\obj\Debug\net9.0\Parsec.Rendering.csproj.AssemblyReference.cache
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\obj\Debug\net9.0\Parsec.Rendering.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\obj\Debug\net9.0\Parsec.Rendering.AssemblyInfoInputs.cache
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\obj\Debug\net9.0\Parsec.Rendering.AssemblyInfo.cs
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\obj\Debug\net9.0\Parsec.Rendering.csproj.CoreCompileInputs.cache
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\obj\Debug\net9.0\Parsec.R.8E122084.Up2Date
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\obj\Debug\net9.0\Parsec.Rendering.dll
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\obj\Debug\net9.0\refint\Parsec.Rendering.dll
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\obj\Debug\net9.0\Parsec.Rendering.pdb
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering\obj\Debug\net9.0\ref\Parsec.Rendering.dll

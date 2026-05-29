@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Parsec.Cli": {
+      "commandName": "Project",
+      "commandLineArgs": "gpu-render attractor 900 900"
+    }
+  }
+}

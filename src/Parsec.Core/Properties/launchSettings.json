@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Parsec.Core": {
+      "commandName": "Project",
+      "commandLineArgs": "parsec all"
+    }
+  }
+}
