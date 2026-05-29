@@ -57,6 +57,7 @@
           <ComboBoxItem>2K (2048×1536)</ComboBoxItem>
           <ComboBoxItem>4K (4096×3072)</ComboBoxItem>
           <ComboBoxItem>8K (8192×6144)</ComboBoxItem>
+		  <ComboBoxItem>12K (12288×9216)</ComboBoxItem>
         </ComboBox>
         <Button Name="HeroButton" HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Center" Margin="0,8,0,0"

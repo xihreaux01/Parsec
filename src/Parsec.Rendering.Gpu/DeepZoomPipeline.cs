@@ -60,13 +60,24 @@ public sealed class DeepZoomPipeline : IDisposable
     private readonly StorageBuffer<Vector4> _accumBuffer;        // 5
     private readonly StorageBuffer<ColorParamsGpu> _colorParams; // 6
     private readonly StorageBuffer<uint> _imageBuffer;           // 7
-    private readonly ComputeShader _deltaShader;
+    private readonly ComputeShader _deltaShader;     // fp64 delta pass (shallow)
+    private readonly ComputeShader _deltaShaderFe;   // floatexp delta pass (deep)
     private readonly ComputeShader _colorShader;
     private readonly ComputeShader _clearShader;
     private readonly ComputeShader _finalizeShader;
     private bool _disposed;
 
+    // Below this view radius the fp64 delta pass starts losing dz^2 to underflow
+    // (the hard wall is ~1.5e-154); switch to the floatexp pass with margin so
+    // rebasing-shrunk deltas never underflow. Tunable: smaller = stay on the
+    // faster fp64 path longer, larger = switch to floatexp sooner (safer).
+    private const double FloatExpRadius = 1e-148;
+
     // reference-orbit cache
+    // While interacting we reuse the settled reference down to this fraction of
+    // its radius; below it the ~45-bit precision margin is spent and we recompute
+    // even mid-zoom. 2^-37 ~ 115 zoom-in notches of headroom.
+    private const double ReuseRadiusFloor = 7.3e-12;
     private ReferenceOrbit? _ref;
     private string _refRe = "", _refIm = "";
     private double _refRadius = double.NaN;
@@ -88,6 +99,8 @@ public sealed class DeepZoomPipeline : IDisposable
         // in Parsec.Rendering.Gpu.csproj; Load() resolves them by bare filename.
         _deltaShader = ComputeShader.FromSource(gl,
             ShaderLoader.Load("deepzoom_delta.glsl"), "deepzoom_delta");
+        _deltaShaderFe = ComputeShader.FromSource(gl,
+            ShaderLoader.Load("deepzoom_delta_fe.glsl"), "deepzoom_delta_fe");
         _colorShader = ComputeShader.FromSource(gl,
             ShaderLoader.Load("deepzoom_color.glsl"), "deepzoom_color");
         _clearShader = ComputeShader.FromSource(gl, ClearShaderSource, "dz_clear");
@@ -97,14 +110,28 @@ public sealed class DeepZoomPipeline : IDisposable
     public uint[] Render(
         DeepZoomView view, int width, int height,
         PaletteParams palette, Color background,
-        int heroSamples = 1, int tileRows = 32, Action<int, int>? progress = null)
+        int heroSamples = 1, int tileRows = 32, Action<int, int>? progress = null,
+        bool interactive = false, int interactiveIter = 0)
     {
         ThrowIfDisposed();
         int samples = Math.Max(1, heroSamples);
         int pixelCount = width * height;
 
-        EnsureReference(view);                       // (re)computes + uploads _refBuffer
+        // Depth-scaled iteration count drives the reference length and the settle
+        // render. While interacting, the caller supplies a preview count chosen to
+        // fit its compute budget (structure-first); fall back to full if unset.
+        int effIter = view.IterationsForDepth();
+        int shaderIter = (interactive && interactiveIter > 0)
+            ? Math.Clamp(interactiveIter, 1, effIter)
+            : effIter;
+
+        EnsureReference(view, interactive, effIter);  // (re)computes + uploads _refBuffer
         int P = view.PrecisionBits();
+
+        // Past the fp64 dz^2 underflow wall, run the floatexp delta pass instead.
+        // Same SSBOs and DeepParams -- only the program differs.
+        bool deep = view.Radius < FloatExpRadius;
+        ComputeShader deltaShader = deep ? _deltaShaderFe : _deltaShader;
         var (refDcRe, refDcIm) = BinaryFixed.OffsetToDouble(
             _refRe, _refIm, view.CenterRe, view.CenterIm, P);
         double spacing = view.SpacingFor(height);
@@ -131,19 +158,19 @@ public sealed class DeepZoomPipeline : IDisposable
         {
             Vector2 jit = (samples == 1) ? Vector2.Zero : HaltonJitter(sample);
 
-            // ---- delta pass (fp64), tiled ----
+            // ---- delta pass (fp64 or floatexp), tiled ----
             _refBuffer.BindBase(1);
             _muBuffer.BindBase(2);
-            _deltaShader.Use();
+            deltaShader.Use();
             for (int tile = 0; tile < tiles; tile++)
             {
                 int rowOffset = tile * tileRows;
                 int rowCount = Math.Min(tileRows, height - rowOffset);
                 _deepParams.Upload(new[] { BuildDeepParams(
-                    width, height, rowOffset, rowCount, _ref!.Count, view.MaxIterations,
+                    width, height, rowOffset, rowCount, _ref!.Count, shaderIter,
                     refDcRe, refDcIm, spacing, 0.5 + jit.X, 0.5 + jit.Y) });
                 _deepParams.BindBase(4);
-                _deltaShader.Dispatch((width + 7) / 8, (rowCount + 7) / 8);
+                deltaShader.Dispatch((width + 7) / 8, (rowCount + 7) / 8);
                 _gl.MemoryBarrier(GlConst.ShaderStorageBarrierBit);
                 _gl.Finish();
                 done++;
@@ -171,8 +198,18 @@ public sealed class DeepZoomPipeline : IDisposable
         return _imageBuffer.Download();
     }
 
-    private void EnsureReference(DeepZoomView view)
+    private void EnsureReference(DeepZoomView view, bool interactive, int iterations)
     {
+        // During interaction we draw a low-res preview, so skip the expensive
+        // high-precision reference recompute on every scroll notch and reuse the
+        // last settled reference orbit. It stays a valid perturbation reference
+        // well past any realistic interactive zoom (it carries ~45 bits of
+        // precision margin), and the view snaps to a freshly computed reference
+        // the instant zooming stops (interactive == false). Only a zoom deep
+        // enough to exhaust that margin forces a recompute mid-gesture.
+        if (interactive && _ref != null && view.Radius >= _refRadius * ReuseRadiusFloor)
+            return;
+
         int P = view.PrecisionBits();
         bool need = _ref == null || view.Radius != _refRadius || P != _refP;
         if (!need)
@@ -184,7 +221,7 @@ public sealed class DeepZoomPipeline : IDisposable
         }
         if (need)
         {
-            _ref = ReferenceOrbit.Compute(view.CenterRe, view.CenterIm, P, view.MaxIterations);
+            _ref = ReferenceOrbit.Compute(view.CenterRe, view.CenterIm, P, iterations);
             _refRe = view.CenterRe; _refIm = view.CenterIm;
             _refRadius = view.Radius; _refP = P;
             _refBuffer.Upload(_ref.ToInterleaved());
@@ -242,6 +279,7 @@ public sealed class DeepZoomPipeline : IDisposable
         if (_disposed) return;
         _disposed = true;
         _deltaShader.Dispose();
+        _deltaShaderFe.Dispose();
         _colorShader.Dispose();
         _clearShader.Dispose();
         _finalizeShader.Dispose();

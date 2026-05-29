@@ -205,6 +205,12 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
     private const int PreviewWidth = 640;
     private const int PreviewHeight = 480;
 
+    // The texture's current pixel dimensions. 3D modes render to the fixed
+    // preview buffer (then upscale -- soft is fine for raymarching); deep-zoom
+    // renders at native control resolution for crisp 1:1 detail. This tracks
+    // whichever was last used so the blit can letterbox by the right aspect.
+    private int _texW = PreviewWidth, _texH = PreviewHeight;
+
     // --- camera + input state ---
     private readonly FlyCamera _cam = new(
         position: new Vector3(4.0f, 3.0f, 4.0f),
@@ -219,6 +225,29 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
     private DateTime _lastTick = DateTime.UtcNow;
 
     private DispatcherTimer? _moveTimer;
+
+    // Deep-zoom adaptive resolution: while panning/zooming we render at a reduced
+    // scale (targeting a known-interactive pixel budget) for responsiveness, then
+    // render once at full native resolution after the interaction settles. The
+    // move timer drives the settle check.
+    private DateTime _lastDeepInteraction = DateTime.MinValue;
+    // True while the user is actively panning/zooming the deep view -> the render
+    // path draws low-res for responsiveness. Set by the interaction handlers and
+    // cleared by the settle timer (OnMoveTick). Deliberately NOT recomputed from
+    // wall-clock at render time: deep frames are slow, so a backlogged render
+    // would see the stamp as already-stale and flip to the expensive native pass
+    // mid-scroll, spiraling into a hang.
+    private bool _deepInteracting;
+    private const double DeepSettleMs = 500;
+    // Interactive preview budget, in iteration*pixels. Held roughly constant and
+    // spent on iterations FIRST (so the structure you're navigating into is
+    // visible at depth, where it takes many thousands of iterations to escape),
+    // then on resolution. ~ the old 640x480 x 3000 cost that scrolled smoothly.
+    private const double DeepInteractiveCost = 640.0 * 480.0 * 3000.0;
+    // Don't let the preview drop below this fraction of native per axis, even if
+    // it means capping iterations -- a single block isn't navigable either.
+    private const double DeepPreviewMinScale = 0.08;
+    private int _deepPreviewIter = 1000;   // iteration count chosen for the last preview
 
     private const float BaseMoveSpeed = 1.5f;   // multiplied by DE-at-camera per second
     private const float LookSensitivity = 0.005f; // radians per pixel
@@ -281,6 +310,8 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
             // so the pan tracks the cursor as a fraction of the view regardless of
             // the fixed preview resolution.
             _deepView.PanPixels(dx, dy, Math.Max(1, (int)Bounds.Height));
+            _lastDeepInteraction = DateTime.UtcNow;
+            _deepInteracting = true;
             _dirty = true;
             RequestNextFrameRendering();
             return;
@@ -305,10 +336,15 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
     {
         base.OnPointerWheelChanged(e);
         if (ActiveType != FractalType.DeepZoom) return;
-        // Stepped zoom: each notch scales the radius. A radius change triggers a
-        // reference-orbit recompute in the pipeline (per the deep-zoom design).
+        // Stepped zoom toward the cursor: each notch scales the radius and shifts
+        // the center so the point under the pointer stays put. A radius change
+        // triggers a reference-orbit recompute in the pipeline (per the design).
+        var pos = e.GetPosition(this);
         double factor = e.Delta.Y > 0 ? 0.8 : 1.25;   // up = zoom in
-        _deepView.ZoomBy(factor);
+        _deepView.ZoomTowardPixel(factor, pos.X, pos.Y,
+            Math.Max(1, (int)Bounds.Width), Math.Max(1, (int)Bounds.Height));
+        _lastDeepInteraction = DateTime.UtcNow;
+        _deepInteracting = true;
         _dirty = true;
         RequestNextFrameRendering();
     }
@@ -327,7 +363,19 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
 
     private void OnMoveTick(object? sender, EventArgs e)
     {
-        if (ActiveType == FractalType.DeepZoom) return;   // 2D: mouse pan/zoom, no WASD fly
+        if (ActiveType == FractalType.DeepZoom)
+        {
+            // Once panning/zooming has paused, upgrade the last low-res frame to a
+            // full native render (one shot -- clearing _deepInteracting guards repeats).
+            if (_deepInteracting &&
+                (DateTime.UtcNow - _lastDeepInteraction).TotalMilliseconds >= DeepSettleMs)
+            {
+                _deepInteracting = false;   // settled -> next render is the crisp native pass
+                _dirty = true;
+                RequestNextFrameRendering();
+            }
+            return;   // 2D: mouse pan/zoom, no WASD fly
+        }
 
         var now = DateTime.UtcNow;
         float dt = (float)(now - _lastTick).TotalSeconds;
@@ -537,11 +585,49 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         if (_dirty && !(ActiveType == FractalType.Attractor && _attractorHash == null))
         {
             var camera = _cam.ToCamera(PreviewWidth, PreviewHeight);
+            // 3D raymarch previews use the fixed preview buffer; deep-zoom renders
+            // at native resolution so the 2D filigree stays crisp at 1:1 -- but
+            // while interacting it renders at a reduced scale for responsiveness
+            // and snaps to native once settled (see OnMoveTick).
+            int rw = PreviewWidth, rh = PreviewHeight;
+            if (ActiveType == FractalType.DeepZoom)
+            {
+                var (nw, nh) = GetPixelSize();
+                // Resolution follows the interaction FLAG, not the wall-clock: a
+                // render that ran late must still honor the scroll that requested
+                // it as low-res, or it spirals into back-to-back native renders.
+                if (_deepInteracting)
+                {
+                    // Spend a fixed compute budget on iterations first, then on
+                    // resolution. At depth the structure needs many thousands of
+                    // iterations to appear, so try the full depth-scaled count and
+                    // let resolution shrink to fit the budget; only if that would
+                    // drop below the floor do we pin resolution and cap iterations.
+                    int effIter = _deepView.IterationsForDepth();
+                    double native = Math.Max(1, (double)nw * nh);
+                    _deepPreviewIter = effIter;
+                    double s = Math.Sqrt((DeepInteractiveCost / _deepPreviewIter) / native);
+                    if (s < DeepPreviewMinScale)
+                    {
+                        s = DeepPreviewMinScale;
+                        _deepPreviewIter = Math.Max(1000,
+                            (int)(DeepInteractiveCost / (native * s * s)));
+                    }
+                    s = Math.Min(s, 1.0);
+                    rw = Math.Max(1, (int)(nw * s));
+                    rh = Math.Max(1, (int)(nh * s));
+                }
+                else
+                {
+                    rw = nw; rh = nh;
+                }
+            }
             uint[] pixels = ActiveType switch
             {
                 FractalType.DeepZoom => _deepPipeline.Render(_deepView,
-                    PreviewWidth, PreviewHeight, Palette.ToParams(),
-                    new Color(0.02f, 0.03f, 0.07f), heroSamples: 1, tileRows: 64),
+                    rw, rh, Palette.ToParams(),
+                    new Color(0.02f, 0.03f, 0.07f), heroSamples: 1, tileRows: 64,
+                    interactive: _deepInteracting, interactiveIter: _deepPreviewIter),
                 FractalType.Mandelbulb => _mandelbulbRenderer.RenderToBuffer(Mandelbulb.ToParams(), camera,
                     PreviewWidth, PreviewHeight, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
@@ -655,12 +741,17 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
                 fixed (uint* p = pixels)
                 {
                     _gl.TexImage2D(GlConst.Texture2D, 0, (int)GlConst.Rgba8,
-                        PreviewWidth, PreviewHeight, 0,
+                        rw, rh, 0,
                         GlConst.Rgba, GlConst.UnsignedByte, (IntPtr)p);
                 }
             }
+            _texW = rw; _texH = rh;
             _dirty = false;
-            Status($"pos ({_cam.Position.X:F2}, {_cam.Position.Y:F2}, {_cam.Position.Z:F2})  ·  WASD+QE move · drag to look");
+            bool atMaxDepth = ActiveType == FractalType.DeepZoom
+                && _deepView.Radius <= DeepZoomView.MinRadius * 1.05;
+            Status(ActiveType == FractalType.DeepZoom
+                ? $"deep zoom · radius {_deepView.Radius:e2}{(atMaxDepth ? " · max depth" : "")} · {rw}x{rh} · drag pan · scroll zoom"
+                : $"pos ({_cam.Position.X:F2}, {_cam.Position.Y:F2}, {_cam.Position.Z:F2})  ·  WASD+QE move · drag to look");
         }
 
         _gl.BindFramebuffer(GlConst.Framebuffer, (uint)fb);
@@ -672,7 +763,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
 
         // Letterbox: fit the preview's aspect ratio inside the control, centered,
         // so the fractal isn't stretched when the view area isn't 4:3.
-        float previewAspect = (float)PreviewWidth / PreviewHeight;
+        float previewAspect = (float)_texW / _texH;
         float viewAspect = (float)size.w / size.h;
         int vpW, vpH, vpX, vpY;
         if (viewAspect > previewAspect)

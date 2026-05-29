@@ -18,8 +18,21 @@ public sealed class DeepZoomView
     public string CenterIm { get; set; } = "0.0";
     /// <summary>Half-height of the view in complex units (the zoom level).</summary>
     public double Radius { get; set; } = 1.5;
-    /// <summary>Iteration cap (also the reference-orbit length).</summary>
+    /// <summary>Iteration floor (and the minimum reference-orbit length). The
+    /// effective cap scales above this with depth -- see IterationsForDepth().</summary>
     public int MaxIterations { get; set; } = 2000;
+
+    /// <summary>Iteration cap scaled with zoom depth. Boundary dwell times grow
+    /// with the number of e-foldings, so a fixed cap starves detail past ~1e-15
+    /// (filaments that need thousands of iterations get tagged in-set). This
+    /// scales the cap with depth, keeping MaxIterations as a floor. The
+    /// coefficients are a location-independent heuristic -- some spots want
+    /// more, some less -- but they track the boundary far better than a constant.</summary>
+    public int IterationsForDepth()
+    {
+        double zoom = Math.Max(0.0, -Math.Log10(Radius));     // decimal e-foldings in
+        return Math.Max(MaxIterations, 1000 + (int)(1000.0 * zoom));
+    }
 
     /// <summary>Fixed-point fractional bits needed at the current depth, with margin.</summary>
     public int PrecisionBits()
@@ -28,9 +41,31 @@ public sealed class DeepZoomView
         return ReferenceOrbit.RecommendedPrecisionBits(depthDigits);
     }
 
+    /// <summary>Deepest radius the renderer supports on the fast fp64 path.
+    /// Below ~1e-148 fp64 dz^2 underflows; the validated floatexp fallback is
+    /// correct but, at the ~150k iterations that depth already demands, 3-5x too
+    /// slow per iteration to be usable. We cap here -- still ~147 orders of zoom,
+    /// comfortably "deep zoom". Raise this (toward 1e-148) only if floatexp gains
+    /// a scaled-double fast path. One-line knob.</summary>
+    public const double MinRadius = 1e-147;
+
     /// <summary>Multiply the zoom radius (factor &lt; 1 zooms in).</summary>
     public void ZoomBy(double factor)
-        => Radius = Math.Clamp(Radius * factor, 1e-300, 4.0);
+        => Radius = Math.Clamp(Radius * factor, MinRadius, 4.0);
+
+    /// <summary>Zoom by <paramref name="factor"/> while keeping the complex point
+    /// currently under the given pixel fixed on screen (zoom toward cursor). The
+    /// center shifts by (1-factor)*offset, where offset is the complex vector from
+    /// the view center to the cursor; the per-step pan also keeps the center's
+    /// precision in step with the deepening zoom.</summary>
+    public void ZoomTowardPixel(double factor, double pixelX, double pixelY, int width, int height)
+    {
+        double spacing = SpacingFor(height);
+        double offRe = (pixelX - width / 2.0) * spacing;
+        double offIm = -(pixelY - height / 2.0) * spacing;
+        PanComplex((1.0 - factor) * offRe, (1.0 - factor) * offIm);
+        ZoomBy(factor);
+    }
 
     /// <summary>Shift the center by a complex offset (in complex units), at full
     /// precision -- the offset is a double but is placed at the correct binary

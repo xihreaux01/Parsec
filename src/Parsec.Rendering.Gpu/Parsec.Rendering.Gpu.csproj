@@ -45,6 +45,7 @@
     <EmbeddedResource Include="Shaders\mosely_core.glsl" />
     <EmbeddedResource Include="Shaders\deepzoom_delta.glsl" />
     <EmbeddedResource Include="Shaders\deepzoom_color.glsl" />
+    <EmbeddedResource Include="Shaders\deepzoom_delta_fe.glsl" />
   </ItemGroup>
 
 </Project>
