@@ -43,9 +43,14 @@
     <EmbeddedResource Include="Shaders\phoenix_core.glsl" />
     <EmbeddedResource Include="Shaders\biomorph_core.glsl" />
     <EmbeddedResource Include="Shaders\mosely_core.glsl" />
+    <EmbeddedResource Include="Shaders\triball_core.glsl" />
     <EmbeddedResource Include="Shaders\deepzoom_delta.glsl" />
     <EmbeddedResource Include="Shaders\deepzoom_color.glsl" />
     <EmbeddedResource Include="Shaders\deepzoom_delta_fe.glsl" />
+    <EmbeddedResource Include="Shaders\octonion_core.glsl" />
+    <EmbeddedResource Include="Shaders\pseudokleinian_core.glsl" />
+    <EmbeddedResource Include="Shaders\riemann_sphere_core.glsl" />
+    <EmbeddedResource Include="Shaders\mandalay_core.glsl" />
   </ItemGroup>
 
 </Project>

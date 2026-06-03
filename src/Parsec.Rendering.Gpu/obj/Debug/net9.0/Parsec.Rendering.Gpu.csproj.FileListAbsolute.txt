@@ -15,3 +15,4 @@ C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering.Gpu\obj\Debug
 C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering.Gpu\obj\Debug\net9.0\refint\Parsec.Rendering.Gpu.dll
 C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering.Gpu\obj\Debug\net9.0\Parsec.Rendering.Gpu.pdb
 C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering.Gpu\obj\Debug\net9.0\ref\Parsec.Rendering.Gpu.dll
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.Rendering.Gpu\obj\Debug\net9.0\Parsec.Rendering.Gpu.sourcelink.json

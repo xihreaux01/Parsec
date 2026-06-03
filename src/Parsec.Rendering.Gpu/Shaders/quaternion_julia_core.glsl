@@ -23,7 +23,7 @@
 //   juliaC        = the quaternion constant c = (cx, cy, cz, cw)
 //   boxParams     = (wslice, planeOffset, bailout, cutEnabled)
 //   surfParams    = (planeNormal.xyz, _)
-//   rot.w         = DE fudge
+//   rot           = (stereoMode>0.5, stereo scale k, stereo radius R, DE fudge)
 //   boundSphere   = bounding sphere for the fast skip
 
 layout(std430, binding = 1) readonly buffer FoldParams {
@@ -35,7 +35,7 @@ layout(std430, binding = 1) readonly buffer FoldParams {
     vec4  boxParams;        // (wslice, planeOffset, bailout, cutEnabled)
     vec4  surfParams;       // (planeNormal.xyz, _)
     vec4  juliaC;           // quaternion constant c
-    vec4  rot;              // (_, _, _, fudge)
+    vec4  rot;              // (stereoMode, stereoK, stereoR, fudge)
     vec4  boundSphere;      // (cx, cy, cz, r)
 } fp;
 
@@ -64,8 +64,26 @@ float estimate(vec3 p) {
     bool  cutEnabled = fp.boxParams.w > 0.5;
     vec4  c          = fp.juliaC;
 
-    // Sample point as a quaternion with the fixed 4D slice in w.
-    vec4 z  = vec4(p, wslice);
+    // --- seed mapping: flat 4D slice, or inverse-stereographic (curved) slice ---
+    // Flat: z = (p, wslice) -- the standard flat 3-plane through the 4D set.
+    // Stereographic: wrap R^3 onto a 3-sphere of radius R (input pre-scaled by k);
+    // the 4D point IS the quaternion seed. Conformal, so the seed-space DE maps
+    // back to 3D by 1/lambda, lambda = 2kR/(1+k^2|p|^2). (wslice is unused here.)
+    float stereoMode = fp.rot.x;
+    float kIn        = fp.rot.y;
+    float Rsph       = fp.rot.z;
+
+    vec4 z;
+    float deScale = 1.0;
+    if (stereoMode > 0.5) {
+        vec3 pk = p * kIn;
+        float s = dot(pk, pk);
+        z = Rsph * vec4(2.0 * pk, s - 1.0) / (s + 1.0);    // R^3 -> R*S^3
+        deScale = (1.0 + s) / max(2.0 * kIn * Rsph, 1e-9); // = 1 / lambda
+    } else {
+        z = vec4(p, wslice);                               // flat slice
+    }
+
     vec4 zp = vec4(1.0, 0.0, 0.0, 0.0);   // running derivative
     float r = 0.0;
     gTrap = vec4(1e20);
@@ -84,10 +102,11 @@ float estimate(vec3 p) {
     r = length(z);
     float dz = length(zp);
     float de = (dz < 1e-12) ? 0.0 : 0.5 * log(max(r, 1e-12)) * r / dz;
+    de *= deScale;   // conformal correction (1.0 in flat mode)
 
     // Half-cut: intersect the solid with a half-space (CSG intersection = max of
-    // signed distances). The plane is dot(p, n) = planeOff. This is the killer
-    // feature -- it reveals the intricate nested interior cross-section.
+    // signed distances). The plane is dot(p, n) = planeOff, in march space, so it
+    // is already a true 3D distance and is NOT scaled by deScale.
     if (cutEnabled) {
         vec3 n = normalize(fp.surfParams.xyz);
         float plane = dot(p, n) - planeOff;
@@ -98,6 +117,9 @@ float estimate(vec3 p) {
 }
 
 vec4 attractorBoundingSphere() {
+    // Stereographic wraps all of R^3 onto the sphere; the flat-mode skip sphere
+    // would clip the form to a disc, so disable the skip in stereo mode.
+    if (fp.rot.x > 0.5) return vec4(0.0, 0.0, 0.0, 1e6);
     return fp.boundSphere;
 }
 

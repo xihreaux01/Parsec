@@ -83,3 +83,4 @@ C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.App\obj\Debug\net9.0\re
 C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.App\obj\Debug\net9.0\Parsec.App.csproj.Up2Date
 C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.App\obj\Debug\net9.0\Parsec.App.genruntimeconfig.cache
 C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.App\obj\Debug\net9.0\ref\parsec-app.dll
+C:\Users\yevoc\Documents\Github\Parsec\Parsec\src\Parsec.App\obj\Debug\net9.0\Parsec.App.sourcelink.json

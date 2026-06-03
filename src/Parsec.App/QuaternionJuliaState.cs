@@ -9,6 +9,9 @@ namespace Parsec.App;
 /// shadow of the 4D object we see), and the half-cut plane offset (sweeping it
 /// slices through the solid to reveal the nested interior). All are smooth
 /// scalars -- great keyframe/animation targets.
+///
+/// Stereographic mode swaps the flat slice for a curved (3-sphere) cut; WSlice
+/// has no effect while it is on, but the half-cut plane still applies.
 /// </summary>
 public sealed class QuaternionJuliaState
 {
@@ -20,6 +23,10 @@ public sealed class QuaternionJuliaState
     public float PlaneOffset = 0.0f;    // sweep to slice through the solid
     public float Fudge = 0.9f;
 
+    public int Stereo = 0;              // 0/1 toggle: flat vs stereographic slice
+    public float StereoK = 1.0f;        // input pre-scale (frames the wrap)
+    public float StereoR = 0.8f;        // sphere radius (~boundary => separated lobes)
+
     public QuaternionJuliaParams ToParams() => new()
     {
         Iterations = Iterations,
@@ -28,6 +35,9 @@ public sealed class QuaternionJuliaState
         Cut = Cut >= 1,
         CutAxis = CutAxis,
         PlaneOffset = PlaneOffset,
+        Stereo = Stereo >= 1,
+        StereoK = StereoK,
+        StereoR = StereoR,
         Fudge = Fudge,
         BoundRadius = 2.0f,
     };
@@ -61,6 +71,18 @@ public sealed class QuaternionJuliaState
             new ParamDescriptor {
                 Label = "Cut plane offset", Group = "Slice & Cut", Min = -1.2, Max = 1.2, Decimals = 3,
                 Get = () => PlaneOffset, Set = v => PlaneOffset = (float)v },
+
+            // Curved slice: 1 = wrap R^3 onto a 3-sphere. R near the boundary
+            // (~0.7-0.9) gives the separated-lobe view; k frames the wrap.
+            new ParamDescriptor {
+                Label = "Stereographic (0/1)", Group = "Stereographic", Min = 0, Max = 1, Step = 1, Decimals = 0,
+                Get = () => Stereo, Set = v => Stereo = (int)Math.Round(v) },
+            new ParamDescriptor {
+                Label = "Stereo scale k", Group = "Stereographic", Min = 0.3, Max = 3.0, Decimals = 2,
+                Get = () => StereoK, Set = v => StereoK = (float)v },
+            new ParamDescriptor {
+                Label = "Stereo radius R", Group = "Stereographic", Min = 0.3, Max = 1.6, Decimals = 2,
+                Get = () => StereoR, Set = v => StereoR = (float)v },
 
             new ParamDescriptor {
                 Label = "Iterations", Group = "Quality", Min = 4, Max = 64, Step = 1, Decimals = 0,

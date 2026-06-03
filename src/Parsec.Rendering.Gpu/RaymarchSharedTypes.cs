@@ -21,6 +21,15 @@ internal struct FoldParamsGpu
     public Vector4 JuliaCVec;
     public Vector4 Rot;
     public Vector4 BoundSphere;
+
+    // Octonion core only (appended; other cores declare the shorter prefix and
+    // ignore these). c, p, q as octonions: Lo = components 0..3, Hi = 4..7.
+    public Vector4 OctCLo;
+    public Vector4 OctCHi;
+    public Vector4 OctPLo;
+    public Vector4 OctPHi;
+    public Vector4 OctQLo;
+    public Vector4 OctQHi;
 }
 
 /// <summary>

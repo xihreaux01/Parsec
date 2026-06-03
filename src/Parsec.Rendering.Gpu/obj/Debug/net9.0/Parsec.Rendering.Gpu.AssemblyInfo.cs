@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Parsec.Rendering.Gpu")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2e5186fdf20fc86ba3a05d3ed4681caeca72bc35")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5ff35bc8437aa135bc4f95fb63a04bbc9fd9bf69")]
 [assembly: System.Reflection.AssemblyProductAttribute("Parsec.Rendering.Gpu")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Parsec.Rendering.Gpu")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

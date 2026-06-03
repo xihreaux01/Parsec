@@ -17,7 +17,7 @@ namespace Parsec.App;
 /// distance estimate at the camera so it feels right at every scale. Renders
 /// on change only — idle draws nothing.
 /// </summary>
-public enum FractalType { AmazingBox, Kifs, Kleinian, Attractor, Mandelbulb, QuaternionJulia, RotBox, Hybrid, QJBox, Menger, Bicomplex, Apollonian, Phoenix, Biomorph, Mosely, DeepZoom }
+public enum FractalType { AmazingBox, Kifs, Kleinian, Attractor, Mandelbulb, QuaternionJulia, RotBox, Hybrid, QJBox, Menger, Bicomplex, Apollonian, Phoenix, Biomorph, Mosely, PseudoKleinian4D, RiemannSphere, Mandalay, DeepZoom }
 
 public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomHitTest
 {
@@ -38,6 +38,9 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
     private GpuPhoenixRenderer? _phoenixRenderer;
     private GpuBiomorphRenderer? _biomorphRenderer;
     private GpuMoselyRenderer? _moselyRenderer;
+    private GpuPseudoKleinian4DRenderer? _pk4dRenderer;
+    private GpuRiemannSphereRenderer? _riemannRenderer;
+    private GpuMandalayRenderer? _mandalayRenderer;
     private DeepZoomPipeline? _deepPipeline;
     private Parsec.Core.Attractors.AttractorHash? _attractorHash;
     private bool _attractorNeedsRegen = true;
@@ -62,6 +65,9 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
     public PhoenixState Phoenix { get; } = new();
     public BiomorphState Biomorph { get; } = new();
     public MoselyState Mosely { get; } = new();
+    public PseudoKleinian4DState PseudoKleinian4D { get; } = new();
+    public RiemannSphereState RiemannSphere { get; } = new();
+    public MandalayState Mandalay { get; } = new();
 
     /// <summary>Orbit-trap palette, shared across all fractals.</summary>
     public PaletteState Palette { get; } = new();
@@ -117,6 +123,9 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
             FractalType.Phoenix => Phoenix.BuildSchema(),
             FractalType.Biomorph => Biomorph.BuildSchema(),
             FractalType.Mosely => Mosely.BuildSchema(),
+            FractalType.PseudoKleinian4D => PseudoKleinian4D.BuildSchema(),
+            FractalType.RiemannSphere => RiemannSphere.BuildSchema(),
+            FractalType.Mandalay => Mandalay.BuildSchema(),
             _ => Kifs.BuildSchema(),
         };
         var combined = new List<ParamDescriptor>(fractalSchema.Parameters);
@@ -251,6 +260,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
 
     private const float BaseMoveSpeed = 1.5f;   // multiplied by DE-at-camera per second
     private const float LookSensitivity = 0.005f; // radians per pixel
+    private const float RollSpeed = 1.2f;        // radians per second for Z/C bank
 
     public event Action<string>? StatusChanged;
     private void Status(string text) => StatusChanged?.Invoke(text);
@@ -390,38 +400,54 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         if (_keysDown.Contains(Key.E)) local.Y += 1;
         if (_keysDown.Contains(Key.Q)) local.Y -= 1;
 
-        if (local == Vector3.Zero) return;
-        local = Vector3.Normalize(local);
+        // Roll / bank about the forward axis (Z/C). Independent of translation,
+        // so it works while stationary too.
+        float roll = 0f;
+        if (_keysDown.Contains(Key.Z)) roll -= 1f;   // bank counter-clockwise
+        if (_keysDown.Contains(Key.C)) roll += 1f;   // bank clockwise
 
-        // Speed scales with distance to the surface: glide slowly near detail,
-        // travel fast in open space. Clamp so we never freeze or rocket.
-        float de = ActiveType switch
+        if (local == Vector3.Zero && roll == 0f) return;
+
+        if (roll != 0f)
+            _cam.RollBy(roll * RollSpeed * dt);
+
+        if (local != Vector3.Zero)
         {
-            FractalType.Kleinian => KleinianDE.Estimate(_cam.Position, Kleinian.ToParams()),
-            FractalType.Kifs => KifsDE.Estimate(_cam.Position, Kifs.ToParams()),
-            // The attractor has no cheap closed-form DE (it lives in the hash),
-            // and is viewed from outside, so a steady mid-speed glide is fine.
-            FractalType.Attractor => 1.0f,
-            FractalType.Mandelbulb => MandelbulbDE.Estimate(_cam.Position, Mandelbulb.ToParams()),
-            FractalType.QuaternionJulia => QuaternionJuliaDE.Estimate(_cam.Position, QuaternionJulia.ToParams()),
-            FractalType.RotBox => RotBoxDE.Estimate(_cam.Position, RotBox.ToParams()),
-            FractalType.Hybrid => HybridDE.Estimate(_cam.Position, Hybrid.ToParams()),
-            FractalType.QJBox => QJBoxDE.Estimate(_cam.Position, QJBox.ToParams()),
-            FractalType.Menger => MengerDE.Estimate(_cam.Position, Menger.ToParams()),
-            FractalType.Bicomplex => BicomplexDE.Estimate(_cam.Position, Bicomplex.ToParams()),
-            FractalType.Apollonian => 1.0f,
-            // Phoenix: same situation as Apollonian -- numerical-gradient DE only,
-            // no cheap closed-form CPU DE. Could port one later if needed.
-            FractalType.Phoenix => 1.0f,
-            // Biomorph: same Mandelbulb-style scalar-derivative DE as Phoenix,
-            // no closed-form CPU DE port done.
-            FractalType.Biomorph => 1.0f,
-            // Mosely: exact GPU DE, but no CPU port yet -> steady glide.
-            FractalType.Mosely => 1.0f,
-            _ => MandelboxDE.Estimate(_cam.Position, Fractal.ToParams()),
-        };
-        float speed = BaseMoveSpeed * Math.Clamp(de, 0.02f, 4.0f);
-        _cam.Move(local, speed * dt);
+            local = Vector3.Normalize(local);
+
+            // Speed scales with distance to the surface: glide slowly near detail,
+            // travel fast in open space. Clamp so we never freeze or rocket.
+            float de = ActiveType switch
+            {
+                FractalType.Kleinian => KleinianDE.Estimate(_cam.Position, Kleinian.ToParams()),
+                FractalType.Kifs => KifsDE.Estimate(_cam.Position, Kifs.ToParams()),
+                // The attractor has no cheap closed-form DE (it lives in the hash),
+                // and is viewed from outside, so a steady mid-speed glide is fine.
+                FractalType.Attractor => 1.0f,
+                FractalType.Mandelbulb => MandelbulbDE.Estimate(_cam.Position, Mandelbulb.ToParams()),
+                FractalType.QuaternionJulia => QuaternionJuliaDE.Estimate(_cam.Position, QuaternionJulia.ToParams()),
+                FractalType.RotBox => RotBoxDE.Estimate(_cam.Position, RotBox.ToParams()),
+                FractalType.Hybrid => HybridDE.Estimate(_cam.Position, Hybrid.ToParams()),
+                FractalType.QJBox => QJBoxDE.Estimate(_cam.Position, QJBox.ToParams()),
+                FractalType.Menger => MengerDE.Estimate(_cam.Position, Menger.ToParams()),
+                FractalType.Bicomplex => BicomplexDE.Estimate(_cam.Position, Bicomplex.ToParams()),
+                FractalType.Apollonian => 1.0f,
+                // Phoenix: same situation as Apollonian -- numerical-gradient DE only,
+                // no cheap closed-form CPU DE. Could port one later if needed.
+                FractalType.Phoenix => 1.0f,
+                // Biomorph: same Mandelbulb-style scalar-derivative DE as Phoenix,
+                // no closed-form CPU DE port done.
+                FractalType.Biomorph => 1.0f,
+                // Mosely: exact GPU DE, but no CPU port yet -> steady glide.
+                FractalType.Mosely => 1.0f,
+                FractalType.PseudoKleinian4D => 1.0f,
+            FractalType.RiemannSphere => 1.0f,
+            FractalType.Mandalay => 1.0f,
+                _ => MandelboxDE.Estimate(_cam.Position, Fractal.ToParams()),
+            };
+            float speed = BaseMoveSpeed * Math.Clamp(de, 0.02f, 4.0f);
+            _cam.Move(local, speed * dt);
+        }
 
         _dirty = true;
         RequestNextFrameRendering();
@@ -450,6 +476,9 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
             _phoenixRenderer = new GpuPhoenixRenderer(_gl, _pipeline);
             _biomorphRenderer = new GpuBiomorphRenderer(_gl, _pipeline);
             _moselyRenderer = new GpuMoselyRenderer(_gl, _pipeline);
+            _pk4dRenderer = new GpuPseudoKleinian4DRenderer(_gl, _pipeline);
+            _riemannRenderer = new GpuRiemannSphereRenderer(_gl, _pipeline);
+            _mandalayRenderer = new GpuMandalayRenderer(_gl, _pipeline);
             _deepPipeline = new DeepZoomPipeline(_gl);
 
             _texture = _gl.GenTexture();
@@ -474,7 +503,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
 
     protected override void OnOpenGlRender(GlInterface gl, int fb)
     {
-        if (!_ready || _gl == null || _pipeline == null || _boxRenderer == null || _kifsRenderer == null || _kleinianRenderer == null || _attractorRenderer == null || _mandelbulbRenderer == null || _qjuliaRenderer == null || _rotboxRenderer == null || _hybridRenderer == null || _qjboxRenderer == null || _mengerRenderer == null || _bicomplexRenderer == null || _apollonianRenderer == null || _phoenixRenderer == null || _biomorphRenderer == null || _moselyRenderer == null || _deepPipeline == null)
+        if (!_ready || _gl == null || _pipeline == null || _boxRenderer == null || _kifsRenderer == null || _kleinianRenderer == null || _attractorRenderer == null || _mandelbulbRenderer == null || _qjuliaRenderer == null || _rotboxRenderer == null || _hybridRenderer == null || _qjboxRenderer == null || _mengerRenderer == null || _bicomplexRenderer == null || _apollonianRenderer == null || _phoenixRenderer == null || _biomorphRenderer == null || _moselyRenderer == null || _pk4dRenderer == null || _riemannRenderer == null || _mandalayRenderer == null || _deepPipeline == null)
         {
             _gl?.BindFramebuffer(GlConst.Framebuffer, (uint)fb);
             _gl?.ClearColor(0.1f, 0.1f, 0.1f, 1f);
@@ -726,6 +755,27 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
+                FractalType.PseudoKleinian4D => _pk4dRenderer.RenderToBuffer(PseudoKleinian4D.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(165, 150, 130),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.RiemannSphere => _riemannRenderer.RenderToBuffer(RiemannSphere.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(205, 160, 135),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
+                FractalType.Mandalay => _mandalayRenderer.RenderToBuffer(Mandalay.ToParams(), camera,
+                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    background: new Color(0.02f, 0.03f, 0.07f),
+                    surface: Color.Rgb(175, 165, 150),
+                    lightDirection: Light.ToDirection(),
+                    palette: Palette.ToParams(),
+                    tileRows: 64),
                 _ => _boxRenderer.RenderToBuffer(Fractal.ToParams(), camera,
                     PreviewWidth, PreviewHeight, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
@@ -816,6 +866,9 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         _phoenixRenderer?.Dispose();
         _biomorphRenderer?.Dispose();
         _moselyRenderer?.Dispose();
+        _pk4dRenderer?.Dispose();
+        _riemannRenderer?.Dispose();
+        _mandalayRenderer?.Dispose();
         _deepPipeline?.Dispose();
         _pipeline?.Dispose();
         _texture = _vao = _blitProgram = 0;
@@ -834,6 +887,9 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         _phoenixRenderer = null;
         _biomorphRenderer = null;
         _moselyRenderer = null;
+        _pk4dRenderer = null;
+        _riemannRenderer = null;
+        _mandalayRenderer = null;
         _deepPipeline = null;
         _pipeline = null;
         _gl = null;
@@ -904,6 +960,12 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
                 width, height, HeroSettings(), bg, Color.Rgb(150, 125, 100), light, pal, tileRows: 32),
             FractalType.Mosely => _moselyRenderer!.Render(Mosely.ToParams(), cam,
                 width, height, HeroSettings(), bg, Color.Rgb(170, 150, 130), light, pal, tileRows: 32),
+            FractalType.PseudoKleinian4D => _pk4dRenderer!.Render(PseudoKleinian4D.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(165, 150, 130), light, pal, tileRows: 32),
+            FractalType.RiemannSphere => _riemannRenderer!.Render(RiemannSphere.ToParams(), cam,
+                width, height, HeroSettings(1.5e-3f), bg, Color.Rgb(205, 160, 135), light, pal, tileRows: 32),
+            FractalType.Mandalay => _mandalayRenderer!.Render(Mandalay.ToParams(), cam,
+                width, height, HeroSettings(), bg, Color.Rgb(175, 165, 150), light, pal, tileRows: 32),
             _ => _boxRenderer!.Render(Fractal.ToParams(), cam,
                 width, height, HeroSettings(), bg, Color.Rgb(150, 125, 100), light, pal, tileRows: 32),
         };
@@ -925,8 +987,17 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         return bitmap;
     }
 
-    private RaymarchSettings HeroSettings() => new(
-        MaxSteps: 400, HitEpsilon: 6e-7f, MaxDistance: 50f, NormalEpsilon: 6e-7f,
+    private RaymarchSettings HeroSettings() => HeroSettings(6e-7f);
+
+    // Hero settings with an explicit hit/normal epsilon. Exact-DE chapters use the
+    // razor-fine default (6e-7). Chapters whose DE is approximate and spiky need a
+    // much coarser epsilon: the Riemann Sphere's effective power reaches ~72, so the
+    // orbit escapes almost discontinuously and the surface has no sub-micron shell to
+    // home into -- at 6e-7 the marcher oversteps and misses it (full in the coarse
+    // preview, sparse at hero). A coarse epsilon catches the same surface the preview
+    // does, and the DE can't resolve finer than that anyway.
+    private RaymarchSettings HeroSettings(float eps) => new(
+        MaxSteps: 400, HitEpsilon: eps, MaxDistance: 50f, NormalEpsilon: eps,
         EnableSoftShadows: true, ShadowSteps: 64, ShadowSoftness: 14f,
         EnableAmbientOcclusion: true, AOSamples: 6, AOStepDistance: 0.04f, AOIntensity: 1.0f,
         HeroSamples: Math.Max(1, HeroSampleCount),

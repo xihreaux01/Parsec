@@ -11,6 +11,11 @@ namespace Parsec.Rendering.Gpu;
 /// set is 4D; <see cref="WSlice"/> chooses the 3D slice we see, and the cut
 /// plane (<see cref="PlaneNormal"/> + <see cref="PlaneOffset"/>, enabled by
 /// <see cref="Cut"/>) reveals the intricate nested interior -- the killer view.
+///
+/// <see cref="Stereo"/> swaps the flat 3-plane slice for an inverse-stereographic
+/// wrap of R^3 onto a 3-sphere of radius <see cref="StereoR"/> (input pre-scaled
+/// by <see cref="StereoK"/>) -- a curved cut that surfaces structure a flat slice
+/// flattens. WSlice is ignored while stereographic is on; the cut still applies.
 /// </summary>
 public sealed record QuaternionJuliaParams
 {
@@ -30,6 +35,10 @@ public sealed record QuaternionJuliaParams
         2 => new Vector3(0, 0, 1),
         _ => new Vector3(1, 0, 0),
     };
+
+    public bool Stereo { get; init; } = false;
+    public float StereoK { get; init; } = 1.0f;
+    public float StereoR { get; init; } = 0.8f;
 
     public float Fudge { get; init; } = 0.9f;
     public float BoundRadius { get; init; } = 2.0f;
@@ -70,7 +79,7 @@ public sealed class GpuQuaternionJuliaRenderer : IDisposable
             BoxParams = new Vector4(qj.WSlice, qj.PlaneOffset, qj.Bailout, qj.Cut ? 1f : 0f),
             SurfParams = new Vector4(Vector3.Normalize(qj.PlaneNormal), 0),
             JuliaCVec = qj.C,
-            Rot = new Vector4(0, 0, 0, qj.Fudge),
+            Rot = new Vector4(qj.Stereo ? 1f : 0f, qj.StereoK, qj.StereoR, qj.Fudge),
             BoundSphere = new Vector4(0, 0, 0, qj.BoundRadius),
         };
         return _pipeline.Render(_shader, foldParams, camera, width, height, settings,

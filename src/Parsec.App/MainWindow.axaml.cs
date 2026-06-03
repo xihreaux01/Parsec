@@ -110,7 +110,7 @@ public partial class MainWindow : Window
             0 => (2048, 1536),   // 2K
             1 => (4096, 3072),   // 4K
             2 => (8192, 6144),   // 8K
-            3 => (12288, 9216),   // 12K
+            3 => (12288, 9216), // 12k
             _ => (4096, 3072),
         };
 
@@ -120,6 +120,9 @@ public partial class MainWindow : Window
         string fractal = _view.ActiveType switch
         {
             FractalType.Kleinian => "kleinian",
+            FractalType.PseudoKleinian4D => "pk4d",
+            FractalType.RiemannSphere => "riemann",
+            FractalType.Mandalay => "mandalay",
             FractalType.AmazingBox => "amazingbox",
             FractalType.Attractor => "thomas",
             FractalType.Mandelbulb => "mandelbulb",
@@ -133,7 +136,6 @@ public partial class MainWindow : Window
             FractalType.Phoenix => "phoenix",
             FractalType.Biomorph => "biomorph",
             FractalType.Mosely => "mosely",
-            FractalType.DeepZoom => "deepmandel",
             _ => "kifs",
         };
         string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
@@ -162,19 +164,22 @@ public partial class MainWindow : Window
         {
             1 => FractalType.AmazingBox,
             2 => FractalType.Kleinian,
-            3 => FractalType.Attractor,
-            4 => FractalType.Mandelbulb,
-            5 => FractalType.QuaternionJulia,
-            6 => FractalType.RotBox,
-            7 => FractalType.Hybrid,
-            8 => FractalType.QJBox,
-            9 => FractalType.Menger,
-            10 => FractalType.Bicomplex,
-            11 => FractalType.Apollonian,
-            12 => FractalType.Phoenix,
-            13 => FractalType.Biomorph,
-            14 => FractalType.Mosely,
-            15 => FractalType.DeepZoom,
+            3 => FractalType.PseudoKleinian4D,
+            4 => FractalType.Attractor,
+            5 => FractalType.Mandelbulb,
+            6 => FractalType.QuaternionJulia,
+            7 => FractalType.RotBox,
+            8 => FractalType.Hybrid,
+            9 => FractalType.QJBox,
+            10 => FractalType.Menger,
+            11 => FractalType.Bicomplex,
+            12 => FractalType.Apollonian,
+            13 => FractalType.Phoenix,
+            14 => FractalType.Biomorph,
+            15 => FractalType.Mosely,
+            16 => FractalType.RiemannSphere,
+            17 => FractalType.Mandalay,
+            18 => FractalType.DeepZoom,
             _ => FractalType.Kifs,
         };
         _view.SetActiveType(type);
@@ -214,11 +219,7 @@ public partial class MainWindow : Window
         // params is meaningless (tweening seed count / drift phase across a
         // chaotic regime morphs between unrelated attractors), and every frame
         // would imply an expensive regenerate.
-        // Deep-zoom is also excluded for now: its schema is palette-only and the
-        // view (center/radius) isn't keyframed yet, so animating it would tween
-        // colour but not the zoom. This is where zoom-video support hooks in later.
-        bool animatable = _view.ActiveType != FractalType.Attractor
-                       && _view.ActiveType != FractalType.DeepZoom;
+        bool animatable = _view.ActiveType != FractalType.Attractor;
         _bank.SetEnabled(animatable);
 
         if (!animatable)

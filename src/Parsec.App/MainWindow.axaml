@@ -24,6 +24,7 @@
           <ComboBoxItem>Amazing IFS (KIFS)</ComboBoxItem>
           <ComboBoxItem>AmazingBox</ComboBoxItem>
           <ComboBoxItem>Pseudo-Kleinian</ComboBoxItem>
+          <ComboBoxItem>Pseudo-Kleinian 4D</ComboBoxItem>
           <ComboBoxItem>Thomas Attractor</ComboBoxItem>
           <ComboBoxItem>Mandelbulb</ComboBoxItem>
           <ComboBoxItem>Quaternion Julia</ComboBoxItem>
@@ -36,6 +37,8 @@
           <ComboBoxItem>Phoenix</ComboBoxItem>
           <ComboBoxItem>Biomorph</ComboBoxItem>
           <ComboBoxItem>Mosely Snowflake</ComboBoxItem>
+          <ComboBoxItem>Riemann Sphere</ComboBoxItem>
+          <ComboBoxItem>Mandalay Fold</ComboBoxItem>
           <ComboBoxItem>Deep Mandelbrot (2D)</ComboBoxItem>
         </ComboBox>
         <Button Name="GenerateButton" HorizontalAlignment="Stretch"
