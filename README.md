@@ -84,7 +84,7 @@ Contributions are welcome — issues and pull requests both. This is a labor of 
 ## License
 
 <!-- TODO: finalize. Intended: GNU General Public License v3.0 or later (GPLv3-or-later). -->
-Parsec is intended to be released under the **GNU General Public License v3.0 or later**. See `LICENSE` for the full text once added.
+Parsec is released under the **GNU General Public License v3.0 or later**. See `LICENSE` for the full text.
 
 ## Acknowledgments
 
