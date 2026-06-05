@@ -1,86 +1,96 @@
 # Parsec
 
-A modular compositional system for defining and rendering iterated function systems (IFS).
+A GPU-accelerated explorer for 2D and 3D fractals — built in C# with [Avalonia](https://avaloniaui.net/) and OpenGL compute shaders.
 
-## Project layout
+Parsec renders distance-estimated 3D fractals (Mandelbox, Mandelbulb, Kleinian groups, Menger sponges, and many more) in real time with a fly camera, and explores classic 2D escape-time sets (Mandelbrot, Julia, Burning Ship) with true perturbation-based deep zoom. It has a keyframe animation system, high-resolution "hero" stills, and video export.
 
-```
-Parsec/
-├── Parsec.sln
-└── src/
-    ├── Parsec.Core/        Pure math: AffineMap2D, IFS2D, IFSNode2D, Polygon2D
-    │                         (Transforms/, Ifs/, Geometry/ subfolders)
-    ├── Parsec.Rendering/   IIFSRenderer2D + SkiaSharp-backed implementations
-    └── Parsec.Cli/         Console runner with command-line example dispatch
-```
+<!-- TODO: drop a hero render here, e.g. ![Parsec](docs/hero.png) -->
 
-`Parsec.Core` has no dependencies. `Parsec.Rendering` depends on Core and SkiaSharp.
-`Parsec.Cli` depends on both.
+---
 
-## Building and running
+## Building & running
+
+> [!IMPORTANT]
+> **Build and run `Parsec.App.csproj`.** The solution contains several projects, but `Parsec.App` is the only runnable application — the others are libraries it references. Building the solution or a library project on its own will not launch Parsec.
 
 ```bash
-dotnet build
-dotnet run --project src/Parsec.Cli -- <example>
+git clone <REPO_URL>           # TODO: your repo URL
+cd parsec
+
+# Run it (Release is strongly recommended — the renderer is compute-heavy):
+dotnet run --project Parsec.App/Parsec.App.csproj -c Release
 ```
 
-PNGs are written to `<exe-dir>/outputs/<example>.png` (typically
-`src/Parsec.Cli/bin/Debug/net9.0/outputs/`).
+> Adjust the path if `Parsec.App.csproj` lives in a subfolder (e.g. `src/Parsec.App/Parsec.App.csproj`).
 
-### Commands
+### Requirements
 
-| Command                                  | Effect                            |
-| ---------------------------------------- | --------------------------------- |
-| `parsec list`                            | List available examples           |
-| `parsec <name>`                          | Render one example                |
-| `parsec all`                             | Render every example              |
-| `parsec help`                            | Usage                             |
+- **.NET SDK** — see the `<TargetFramework>` in `Parsec.App.csproj` for the exact version. <!-- TODO: state the version, e.g. .NET 8.0 -->
+- **A GPU with OpenGL 4.3+**, including compute shaders and **double-precision (fp64)** support. The 3D raymarchers and the 2D deep-zoom pipeline both rely on compute shaders; deep zoom additionally needs fp64.
+- **ffmpeg** *(optional)* — only needed to stitch exported animation frames into a video. Parsec prints the exact `ffmpeg` command after a frame export.
 
-### Examples available
+---
 
-- `diamond` — Reference image: rotated-square ∪ two corner squares, depth 7, outlines.
-- `diamond-construction` — Same IFS at depth 2 with fill + outlines, showing construction.
-- `carpet` — Sierpiński carpet, depth 5.
-- `triangle` — Sierpiński triangle, depth 7.
+## What's inside
 
-## Design notes
+### 3D fractals (raymarched, distance-estimated)
 
-### Layered architecture
+Mandelbox (classic) · AmazingBox · Rotated Mandelbox · Mandelbulb · Quaternion Julia · Amazing IFS (KIFS) · Kleinian · Pseudo-Kleinian · Pseudo-Kleinian 4D · Folded Menger · Bicomplex Julia · Apollonian Gasket · Phoenix · Biomorph · Mosely Snowflake · Riemann Sphere · Mandalay Fold · Anisotropic Fold · 3D Burning Ship · Hybrid (box+bulb) · QJulia × Box · Orbit Hybrid (KIFS+Mbox) · Thomas Attractor
 
-- **`IFS2D`** is a pure mathematical object — a set of `IFSNode2D`s, each carrying
-  an affine transform plus optional metadata (weight, post-transform, color, label).
-  It knows nothing about how it will be rendered.
-- **`IIFSRenderer2D`** is the swappable rendering layer. Today the only
-  implementation is `DeterministicSubdivisionRenderer`; planned future siblings
-  include density-accumulation (fractal-flame-style) and chaos-game renderers.
-- **Examples** in the CLI compose IFSes with renderers; the same IFS can in
-  principle be fed to any renderer.
+Each is a GPU distance estimator with orbit-trap coloring, configurable lighting/reflection, and a free-fly camera whose speed adapts to the distance field (where a CPU DE mirror exists).
 
-### Composition operator
+### 2D deep zoom
 
-`IFS2D.Union(a, b)` (also `a | b`) concatenates node lists. Weights are
-preserved as-is; any normalization happens at the renderer. This lets
-sub-IFSes be named, reused, and recombined without lossy intermediate
-normalization.
+A perturbation-theory escape-time explorer with four formulas — **Mandelbrot, Julia, Burning Ship, Prospector** — selectable from a dropdown. Highlights:
 
-### Transform composition order
+- **Arbitrary-depth zoom** via a high-precision reference orbit (binary fixed-point) plus per-pixel delta iteration, validated against an mpmath oracle.
+- Three render paths chosen automatically by depth: **direct fp64** (shallow), **fp64 perturbation** (mid), and **floatexp perturbation** (deep), reaching radii down to ~1e-147.
+- Julia mode exposes a keyframeable constant **κ**, so a κ sweep morphs the set in an animation.
+- Drag to pan, scroll to zoom.
 
-`a.Then(b).Apply(p) == b.Apply(a.Apply(p))`. I.e., `Then` reads left-to-right
-in application order. `AffineMap2D.Compose(a, b, c, ...)` is the variadic form.
+### Rendering & animation
 
-### Contractive vs non-contractive systems
+- **Keyframe timeline** with playback (Space to play/pause) and per-fractal animation save/load.
+- **Hero stills** with up to 16× SSAA at resolutions up to 12K.
+- **Video export** to a frame sequence (+ an `ffmpeg` stitch command).
+- Shared palette / lighting / reflection controls across all chapters.
 
-`IFS2D.IsContractive` reports whether every node's primary transform has
-spectral norm < 1. The deterministic subdivision renderer doesn't require this,
-but interesting things happen when it's false — see the `diamond` example,
-where the diamond map is a pure rotation.
+---
 
-## Planned next steps
+## Using it
 
-1. **Density accumulation renderer** — proper handling of overlapping leaves;
-   the right answer for high-depth visualizations of non-trivial IFSes.
-2. **Chaos game renderer** — stochastic point-spray; lets `Weight` and `Color`
-   on nodes become first-class.
-3. **GPU compute backend** — the architecture is positioned for this; the
-   `AffineMap2D` field layout already matches a GPU `float3x2`.
-4. **3D** — `IFS3D`, `AffineMap3D`, distance-estimator and point-cloud renderers.
+1. Pick a fractal from the **FRACTAL** dropdown (top-right). For Deep Zoom 2D, a **FORMULA** dropdown appears.
+2. **3D:** fly with the mouse + keyboard. **2D deep zoom:** drag to pan, scroll to zoom.
+3. Tune parameters in the side panel.
+4. Set keyframes in the timeline, hit **Space** to preview the animation.
+5. **Save Hero Render** for a high-res still, or **Test Render** to export an animation frame sequence.
+
+---
+
+## Known limitations
+
+Parsec is a personal project shared in the hope it's useful — these are the rough edges to expect:
+
+- **Deep-zoom Burning Ship at very wide views.** Perturbation is unreliable for the abs-fold map when the delta is large; the renderer uses direct fp64 at shallow zoom to compensate, but extreme wide framings can still show boundary noise. Zoom in for clean results.
+- **Fly-camera speed near some 3D fractals.** A few chapters lack a CPU distance-estimate mirror, so the camera glides at a constant speed near them instead of slowing into detail. Purely a navigation nicety, not a render issue.
+- **Deep-zoom floor.** Zoom bottoms out around radius `1e-147` (the combined fp64 + floatexp precision limit).
+- **Hardware.** No software fallback — a reasonably modern GPU with fp64 compute is required.
+
+---
+
+## Contributing
+
+Contributions are welcome — issues and pull requests both. This is a labor of love maintained alongside other projects, so please be patient with review times; there's no SLA.
+
+<!-- TODO: once decided — add a CONTRIBUTING.md and note the DCO sign-off here. -->
+
+## License
+
+<!-- TODO: finalize. Intended: GNU General Public License v3.0 or later (GPLv3-or-later). -->
+Parsec is intended to be released under the **GNU General Public License v3.0 or later**. See `LICENSE` for the full text once added.
+
+## Acknowledgments
+
+Parsec stands on decades of work from the fractal community — Tom Lowe's Mandelbox, the Mandelbulb collaboration, and the formula research shared on fractalforums and in Mandelbulber, among many others.
+
+<!-- TODO: list specific formula/shader sources you adapted in CREDITS.md -->
