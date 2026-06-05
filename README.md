@@ -14,18 +14,16 @@ Parsec renders distance-estimated 3D fractals (Mandelbox, Mandelbulb, Kleinian g
 > **Build and run `Parsec.App.csproj`.** The solution contains several projects, but `Parsec.App` is the only runnable application — the others are libraries it references. Building the solution or a library project on its own will not launch Parsec.
 
 ```bash
-git clone <REPO_URL>           # TODO: your repo URL
+git clone https://github.com/zoomacroom-games/Parsec
 cd parsec
 
 # Run it (Release is strongly recommended — the renderer is compute-heavy):
 dotnet run --project Parsec.App/Parsec.App.csproj -c Release
 ```
 
-> Adjust the path if `Parsec.App.csproj` lives in a subfolder (e.g. `src/Parsec.App/Parsec.App.csproj`).
-
 ### Requirements
 
-- **.NET SDK** — see the `<TargetFramework>` in `Parsec.App.csproj` for the exact version. <!-- TODO: state the version, e.g. .NET 8.0 -->
+- **.NET SDK** — see the `<TargetFramework>` in `Parsec.App.csproj` for the exact version.
 - **A GPU with OpenGL 4.3+**, including compute shaders and **double-precision (fp64)** support. The 3D raymarchers and the 2D deep-zoom pipeline both rely on compute shaders; deep zoom additionally needs fp64.
 - **ffmpeg** *(optional)* — only needed to stitch exported animation frames into a video. Parsec prints the exact `ffmpeg` command after a frame export.
 
@@ -82,7 +80,6 @@ Parsec is a personal project shared in the hope it's useful — these are the ro
 
 Contributions are welcome — issues and pull requests both. This is a labor of love maintained alongside other projects, so please be patient with review times; there's no SLA.
 
-<!-- TODO: once decided — add a CONTRIBUTING.md and note the DCO sign-off here. -->
 
 ## License
 
@@ -91,6 +88,6 @@ Parsec is intended to be released under the **GNU General Public License v3.0 or
 
 ## Acknowledgments
 
-Parsec stands on decades of work from the fractal community — Tom Lowe's Mandelbox, the Mandelbulb collaboration, and the formula research shared on fractalforums and in Mandelbulber, among many others.
+Parsec stands on decades of work from the fractal community — Tom Lowe's Mandelbox, the Mandelbulb collaboration, and the formula research shared on fractalforums and in Mandelbulber, among many others. Special thank you to Inigo Quilez for his work on fractals.
 
-<!-- TODO: list specific formula/shader sources you adapted in CREDITS.md -->
+Pseudo Kleinian 4D, Mandalay Fold, and Riemann Sphere fractal formulas based approximately on formulas found within Mandelbulber.
