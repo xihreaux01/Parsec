@@ -17,6 +17,9 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.2.0" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.0" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.0" />
+    <!-- Linux native Skia must match the managed SkiaSharp 3.119.x pinned in Parsec.Rendering;
+         Avalonia 11.2 otherwise pulls NativeAssets.Linux 2.88, which aborts at startup. -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
   </ItemGroup>
 
   <ItemGroup>
