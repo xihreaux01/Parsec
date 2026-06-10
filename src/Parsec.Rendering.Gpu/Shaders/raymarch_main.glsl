@@ -179,15 +179,23 @@ Hit traceRay(vec3 ro, vec3 rd, float hitEps, float maxDist, float normalEps, int
     for (i = 0; i < maxSteps; i++) {
         vec3 p = ro + rd * t;
         float d = estimate(p) * fudge;
-        // Cone-scaled hit epsilon: stop when the surface is within ~half a
-        // pixel's world-size at this distance, so detail resolves with
-        // resolution/zoom instead of a fixed world threshold. hitEps acts as a
-        // floor (finest allowed / float-noise guard). Low-res preview yields a
-        // naturally coarse eps (stays cheap); high-res hero sharpens itself.
+                // Cone-scaled hit epsilon: Quality-dependent scaling factor.
+        // Bitmask: Quality is in bits 4-7 of marchI.w (0=Fast, 1=Balanced, 2=Sharp).
+        int quality = (rp.marchI.w >> 4) & 0xF;
         float pixelWorld = (2.0 * rp.tanFov.y / float(rp.imageHeight)) * t;
-        // Quality boost: allow the marcher to resolve detail up to 4x smaller than a pixel
-        // if the hardware/quality settings allow it. Prevents the "blobby" look at zoom.
-        float effectiveEps = max(hitEps, 0.25 * pixelWorld);
+        float effectiveEps;
+        if (quality >= 2) {
+            // Sharp mode: resolve detail at the absolute hitEps floor. No cone-scaling.
+            // This exposes the full fractal detail but may alias at SSAA 1x.
+            effectiveEps = hitEps;
+        } else if (quality == 1) {
+            // Balanced mode: much sharper than fast, but still uses distance-scaling
+            // to resolve geometric noise into a sub-pixel average.
+            effectiveEps = max(hitEps, 0.05 * pixelWorld);
+        } else {
+            // Fast mode: coarse scaling for high movement performance.
+            effectiveEps = max(hitEps, 0.5 * pixelWorld);
+        }
         if (d < effectiveEps) { hit = true; break; }
         lastD = d;
         t += d;

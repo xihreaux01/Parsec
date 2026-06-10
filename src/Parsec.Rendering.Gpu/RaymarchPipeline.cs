@@ -105,7 +105,8 @@ public sealed class RaymarchPipeline : IDisposable
         var frame = CameraFrame.Build(camera, width, height);
         var lightDir = Vector3.Normalize(lightDirection);
         int flags = (settings.EnableSoftShadows ? 1 : 0)
-                  | (settings.EnableAmbientOcclusion ? 2 : 0);
+                  | (settings.EnableAmbientOcclusion ? 2 : 0)
+                  | ((int)settings.Quality << 4);
 
         int tiles = (height + tileRows - 1) / tileRows;
         int totalUnits = samples * tiles;

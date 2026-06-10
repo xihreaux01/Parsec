@@ -11,6 +11,8 @@ namespace Parsec.Rendering.Raymarching;
 /// pixel averaged together. The RaymarchPipeline reads this to decide how many
 /// AA passes to run. Preview keeps it at 1; the hero path sets it from the UI.
 /// </summary>
+public enum PreviewQuality { Fast, Balanced, Sharp }
+
 public sealed record RaymarchSettings(
     int MaxSteps = 1000,
     float HitEpsilon = 1e-6f,
@@ -24,6 +26,8 @@ public sealed record RaymarchSettings(
     float AOStepDistance = 0.05f,
     float AOIntensity = 1.0f,
     int HeroSamples = 1,
+    PreviewQuality Quality = PreviewQuality.Fast,
+    
     bool EnableReflections = false,
     int ReflectionBounces = 2,
     float Gloss = 0.5f,

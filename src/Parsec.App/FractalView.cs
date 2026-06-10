@@ -17,7 +17,6 @@ namespace Parsec.App;
 /// distance estimate at the camera so it feels right at every scale. Renders
 /// on change only — idle draws nothing.
 /// </summary>
-public enum PreviewQuality { Fast, Balanced, Sharp }
 
 public enum FractalType { AmazingBox, Mandelbox, Kifs, Kleinian, Attractor, Mandelbulb, QuaternionJulia, RotBox, Hybrid, QJBox, Menger, Bicomplex, Apollonian, Phoenix, Biomorph, Mosely, PseudoKleinian4D, RiemannSphere, Mandalay, Anisotropic, OrbitHybrid, BurningShip, DeepZoom }
 
@@ -1044,7 +1043,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
             MaxSteps: steps, HitEpsilon: eps, MaxDistance: 40f, NormalEpsilon: eps * 1.5f,
             EnableSoftShadows: shadows, ShadowSteps: shadows ? 32 : 0, ShadowSoftness: 12f,
             EnableAmbientOcclusion: true, AOSamples: 4, AOStepDistance: 0.05f, AOIntensity: 1.0f,
-            HeroSamples: 1,
+            HeroSamples: 1, Quality: effQuality,
             EnableReflections: Reflection.Bounces > 0,
             ReflectionBounces: Reflection.Bounces,
             Gloss: Reflection.Gloss,
@@ -1146,7 +1145,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         MaxSteps: 2000, HitEpsilon: eps, MaxDistance: 50f, NormalEpsilon: eps,
         EnableSoftShadows: true, ShadowSteps: 64, ShadowSoftness: 14f,
         EnableAmbientOcclusion: true, AOSamples: 6, AOStepDistance: 0.04f, AOIntensity: 1.0f,
-        HeroSamples: Math.Max(1, HeroSampleCount),
+        HeroSamples: Math.Max(1, HeroSampleCount), Quality: PreviewQuality.Sharp,
         EnableReflections: Reflection.Bounces > 0,
         ReflectionBounces: Reflection.Bounces,
         Gloss: Reflection.Gloss,
