@@ -103,14 +103,14 @@ public sealed class RiemannSphereState
                 Label = "Power clamp", Group = "Quality", Min = 2, Max = 36, Step = 1, Decimals = 0,
                 Get = () => PowerClamp, Set = v => PowerClamp = (float)v },
             new ParamDescriptor {
-                Label = "Iterations", Group = "Quality", Min = 4, Max = 40, Step = 1, Decimals = 0,
+                Label = "Iterations", Group = "Quality", Min = 4, Max = 500, Step = 1, Decimals = 0,
                 Get = () => Iterations, Set = v => Iterations = (int)Math.Round(v) },
             // Kept low on purpose -- high bailout overflows the 2p exponent.
             new ParamDescriptor {
                 Label = "Bailout", Group = "Quality", Min = 1.2, Max = 3.0, Decimals = 2,
                 Get = () => Bailout, Set = v => Bailout = (float)v },
             new ParamDescriptor {
-                Label = "DE fudge", Group = "Quality", Min = 0.3, Max = 1.0, Decimals = 2,
+                Label = "DE fudge", Group = "Quality", Min = 0.3, Max = 2.0, Decimals = 2,
                 Get = () => Fudge, Set = v => Fudge = (float)v },
             new ParamDescriptor {
                 Label = "Bound radius", Group = "Quality", Min = 1.0, Max = 8.0, Decimals = 1,

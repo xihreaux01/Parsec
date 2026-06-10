@@ -34,10 +34,10 @@ public sealed class MandelbulbState
                 Label = "Iterations", Group = "Quality", Min = 4, Max = 500, Step = 1, Decimals = 0,
                 Get = () => Iterations, Set = v => Iterations = (int)Math.Round(v) },
             new ParamDescriptor {
-                Label = "Bailout", Group = "Quality", Min = 1.5, Max = 4.0, Decimals = 2,
+                Label = "Bailout", Group = "Quality", Min = 1.5, Max = 20.0, Decimals = 2,
                 Get = () => Bailout, Set = v => Bailout = (float)v },
             new ParamDescriptor {
-                Label = "DE fudge", Group = "Quality", Min = 0.4, Max = 1.0, Decimals = 2,
+                Label = "DE fudge", Group = "Quality", Min = 0.4, Max = 2.0, Decimals = 2,
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };

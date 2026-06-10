@@ -101,7 +101,7 @@ public sealed class BicomplexState
                 Label = "Bailout", Group = "Quality", Min = 2.0, Max = 8.0, Decimals = 2,
                 Get = () => Bailout, Set = v => Bailout = (float)v },
             new ParamDescriptor {
-                Label = "DE fudge", Group = "Quality", Min = 0.4, Max = 1.0, Decimals = 2,
+                Label = "DE fudge", Group = "Quality", Min = 0.4, Max = 2.0, Decimals = 2,
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };

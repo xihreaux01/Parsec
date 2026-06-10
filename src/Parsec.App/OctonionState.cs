@@ -52,10 +52,10 @@ public sealed class OctonionState
                 Label = "c (imag)", Group = "Julia seed", Min = -0.6, Max = 0.6, Decimals = 3,
                 Get = () => CIm, Set = v => CIm = (float)v },
             new ParamDescriptor {
-                Label = "Iterations", Group = "Render", Min = 16, Max = 160, Decimals = 0,
+                Label = "Iterations", Group = "Render", Min = 16, Max = 500, Decimals = 0,
                 Get = () => Iterations, Set = v => Iterations = (int)v },
             new ParamDescriptor {
-                Label = "DE fudge", Group = "Render", Min = 0.3, Max = 1.0, Decimals = 2,
+                Label = "DE fudge", Group = "Render", Min = 0.3, Max = 2.0, Decimals = 2,
                 Get = () => Fudge, Set = v => Fudge = (float)v },
 
             // Slice mode: 0 = flat plane (smooth), 1 = stereographic (curved, reveals

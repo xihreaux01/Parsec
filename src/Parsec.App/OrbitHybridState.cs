@@ -70,7 +70,7 @@ public sealed class OrbitHybridState
                 Label = "Mandelbox steps", Group = "Schedule", Min = 0, Max = 6, Step = 1, Decimals = 0,
                 Get = () => MboxCount, Set = v => MboxCount = (int)Math.Round(v) },
             new ParamDescriptor {
-                Label = "Iterations", Group = "Schedule", Min = 4, Max = 28, Step = 1, Decimals = 0,
+                Label = "Iterations", Group = "Schedule", Min = 4, Max = 500, Step = 1, Decimals = 0,
                 Get = () => Iterations, Set = v => Iterations = (int)Math.Round(v) },
 
             // KIFS formula.

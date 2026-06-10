@@ -37,10 +37,10 @@ public sealed class TriballState
                 Label = "Bailout", Group = "Form", Min = 3.0, Max = 12.0, Decimals = 1,
                 Get = () => Bailout, Set = v => Bailout = (float)v },
             new ParamDescriptor {
-                Label = "Iterations", Group = "Quality", Min = 4, Max = 28, Step = 1, Decimals = 0,
+                Label = "Iterations", Group = "Quality", Min = 4, Max = 500, Step = 1, Decimals = 0,
                 Get = () => Iterations, Set = v => Iterations = (int)System.Math.Round(v) },
             new ParamDescriptor {
-                Label = "DE fudge", Group = "Quality", Min = 0.4, Max = 1.0, Decimals = 2,
+                Label = "DE fudge", Group = "Quality", Min = 0.4, Max = 2.0, Decimals = 2,
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };

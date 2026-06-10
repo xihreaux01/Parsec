@@ -81,11 +81,11 @@ public sealed class ApollonianState
 
             new ParamDescriptor {
                 Label = "Iterations", Group = "Quality",
-                Min = 4, Max = 50, Step = 1, Decimals = 0,
+                Min = 4, Max = 500, Step = 1, Decimals = 0,
                 Get = () => Iterations, Set = v => Iterations = (int)Math.Round(v) },
             new ParamDescriptor {
                 Label = "DE fudge", Group = "Quality",
-                Min = 0.4, Max = 1.0, Decimals = 2,
+                Min = 0.4, Max = 2.0, Decimals = 2,
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };

@@ -185,7 +185,9 @@ Hit traceRay(vec3 ro, vec3 rd, float hitEps, float maxDist, float normalEps, int
         // floor (finest allowed / float-noise guard). Low-res preview yields a
         // naturally coarse eps (stays cheap); high-res hero sharpens itself.
         float pixelWorld = (2.0 * rp.tanFov.y / float(rp.imageHeight)) * t;
-        float effectiveEps = max(hitEps, 0.5 * pixelWorld);
+        // Quality boost: allow the marcher to resolve detail up to 4x smaller than a pixel
+        // if the hardware/quality settings allow it. Prevents the "blobby" look at zoom.
+        float effectiveEps = max(hitEps, 0.25 * pixelWorld);
         if (d < effectiveEps) { hit = true; break; }
         lastD = d;
         t += d;
