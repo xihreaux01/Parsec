@@ -736,6 +736,10 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
                 }
             }
             var camera = _cam.ToCamera(rw, rh);
+            if (ActiveType == FractalType.Mandelbulb)
+            {
+                Status($"Render Mandelbulb: iter={Mandelbulb.Iterations}, bailout={Mandelbulb.Bailout:F1}, res={rw}x{rh}, quality={Quality}");
+            }
             uint[] pixels = ActiveType switch
             {
                 FractalType.DeepZoom => _deepPipeline.Render(_deepView,

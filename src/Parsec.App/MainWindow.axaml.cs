@@ -64,17 +64,22 @@ public partial class MainWindow : Window
             previewQualitySelector.SelectionChanged += (_, _) =>
             {
                 if (_view != null)
+                {
                     _view.Quality = (PreviewQuality)previewQualitySelector.SelectedIndex;
+                    _view.MarkDirty();
+                }
             };
         var heroSamplesSelector = this.FindControl<ComboBox>("HeroSamplesSelector");
         if (heroSamplesSelector != null)
             heroSamplesSelector.SelectionChanged += (_, _) =>
             {
                 if (_view != null)
+                {
                     _view.HeroSampleCount = heroSamplesSelector.SelectedIndex switch
                     {
                         0 => 1, 1 => 4, 2 => 9, 3 => 16, _ => 1,
                     };
+                }
             };
 
         _generateButton = this.FindControl<Button>("GenerateButton");
