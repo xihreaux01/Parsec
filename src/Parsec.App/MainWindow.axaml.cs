@@ -59,6 +59,13 @@ public partial class MainWindow : Window
                     _view.SetDeepFormula(formulaSelector.SelectedIndex);
             };
 
+        var previewQualitySelector = this.FindControl<ComboBox>("PreviewQualitySelector");
+        if (previewQualitySelector != null)
+            previewQualitySelector.SelectionChanged += (_, _) =>
+            {
+                if (_view != null)
+                    _view.Quality = (PreviewQuality)previewQualitySelector.SelectedIndex;
+            };
         var heroSamplesSelector = this.FindControl<ComboBox>("HeroSamplesSelector");
         if (heroSamplesSelector != null)
             heroSamplesSelector.SelectionChanged += (_, _) =>

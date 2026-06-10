@@ -20,7 +20,7 @@ git clone https://github.com/zoomacroom-games/Parsec
 cd parsec
 
 # Run it (Release is strongly recommended — the renderer is compute-heavy):
-dotnet run --project Parsec.App/Parsec.App.csproj -c Release
+dotnet run --project src/Parsec.App/Parsec.App.csproj -c Release
 ```
 
 ### Requirements
@@ -28,6 +28,7 @@ dotnet run --project Parsec.App/Parsec.App.csproj -c Release
 - **.NET SDK** — see the `<TargetFramework>` in `Parsec.App.csproj` for the exact version.
 - **A GPU with OpenGL 4.3+**, including compute shaders and **double-precision (fp64)** support. The 3D raymarchers and the 2D deep-zoom pipeline both rely on compute shaders; deep zoom additionally needs fp64.
 - **ffmpeg** *(optional)* — only needed to stitch exported animation frames into a video. Parsec prints the exact `ffmpeg` command after a frame export.
+- **libfontconfig1** *(Linux)* — required by SkiaSharp for text and UI rendering on some distributions.
 
 ---
 
@@ -53,6 +54,7 @@ A perturbation-theory escape-time explorer with four formulas — **Mandelbrot, 
 - **Keyframe timeline** with playback (Space to play/pause) and per-fractal animation save/load.
 - **Hero stills** with up to 16× SSAA at resolutions up to 12K.
 - **Video export** to a frame sequence (+ an `ffmpeg` stitch command).
+- **libfontconfig1** *(Linux)* — required by SkiaSharp for text and UI rendering on some distributions.
 - Shared palette / lighting / reflection controls across all chapters.
 
 ---

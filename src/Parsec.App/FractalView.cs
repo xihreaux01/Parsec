@@ -17,10 +17,14 @@ namespace Parsec.App;
 /// distance estimate at the camera so it feels right at every scale. Renders
 /// on change only — idle draws nothing.
 /// </summary>
+public enum PreviewQuality { Fast, Balanced, Sharp }
+
 public enum FractalType { AmazingBox, Mandelbox, Kifs, Kleinian, Attractor, Mandelbulb, QuaternionJulia, RotBox, Hybrid, QJBox, Menger, Bicomplex, Apollonian, Phoenix, Biomorph, Mosely, PseudoKleinian4D, RiemannSphere, Mandalay, Anisotropic, OrbitHybrid, BurningShip, DeepZoom }
 
 public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomHitTest
 {
+    public PreviewQuality Quality { get; set; } = PreviewQuality.Fast;
+
     private Gl? _gl;
     private RaymarchPipeline? _pipeline;
     private GpuMandelboxRenderer? _boxRenderer;
@@ -282,6 +286,20 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
     // scale (targeting a known-interactive pixel budget) for responsiveness, then
     // render once at full native resolution after the interaction settles. The
     // move timer drives the settle check.
+    private bool _is3DInteracting = false;
+    private DateTime _last3DInteraction = DateTime.MinValue;
+    private const int IdleSettleMs = 250;
+
+    private void Mark3DInteraction()
+    {
+        _last3DInteraction = DateTime.UtcNow;
+        if (!_is3DInteracting)
+        {
+            _is3DInteracting = true;
+            _dirty = true;
+        }
+    }
+
     private DateTime _lastDeepInteraction = DateTime.MinValue;
     // True while the user is actively panning/zooming the deep view -> the render
     // path draws low-res for responsiveness. Set by the interaction handlers and
@@ -370,6 +388,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
             return;
         }
         // Drag right -> look right (yaw+); drag up -> look up (pitch+).
+        Mark3DInteraction();
         _cam.Look(dx * LookSensitivity, -dy * LookSensitivity);
         _dirty = true;
         RequestNextFrameRendering();
@@ -430,6 +449,13 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
             return;   // 2D: mouse pan/zoom, no WASD fly
         }
 
+        if (_is3DInteracting && (DateTime.UtcNow - _last3DInteraction).TotalMilliseconds > IdleSettleMs)
+        {
+            _is3DInteracting = false;
+            _dirty = true;
+            RequestNextFrameRendering();
+        }
+
         var now = DateTime.UtcNow;
         float dt = (float)(now - _lastTick).TotalSeconds;
         _lastTick = now;
@@ -450,6 +476,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         if (_keysDown.Contains(Key.C)) roll += 1f;   // bank clockwise
 
         if (local == Vector3.Zero && roll == 0f) return;
+        Mark3DInteraction();
 
         if (roll != 0f)
             _cam.RollBy(roll * RollSpeed * dt);
@@ -663,12 +690,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
 
         if (_dirty && !(ActiveType == FractalType.Attractor && _attractorHash == null))
         {
-            var camera = _cam.ToCamera(PreviewWidth, PreviewHeight);
-            // 3D raymarch previews use the fixed preview buffer; deep-zoom renders
-            // at native resolution so the 2D filigree stays crisp at 1:1 -- but
-            // while interacting it renders at a reduced scale for responsiveness
-            // and snaps to native once settled (see OnMoveTick).
-            int rw = PreviewWidth, rh = PreviewHeight;
+            int rw, rh;
             if (ActiveType == FractalType.DeepZoom)
             {
                 var (nw, nh) = GetPixelSize();
@@ -701,6 +723,19 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
                     rw = nw; rh = nh;
                 }
             }
+            else
+            {
+                if (_is3DInteracting)
+                {
+                    rw = PreviewWidth;
+                    rh = PreviewHeight;
+                }
+                else
+                {
+                    (rw, rh) = GetPixelSize();
+                }
+            }
+            var camera = _cam.ToCamera(rw, rh);
             uint[] pixels = ActiveType switch
             {
                 FractalType.DeepZoom => _deepPipeline.Render(_deepView,
@@ -708,154 +743,154 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
                     new Color(0.02f, 0.03f, 0.07f), heroSamples: 1, tileRows: 64,
                     interactive: _deepInteracting, interactiveIter: _deepPreviewIter),
                 FractalType.Mandelbulb => _mandelbulbRenderer.RenderToBuffer(Mandelbulb.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(210, 175, 140),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.BurningShip => _burningShipRenderer.RenderToBuffer(BurningShip.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(225, 140, 90),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.QuaternionJulia => _qjuliaRenderer.RenderToBuffer(QuaternionJulia.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(210, 180, 150),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.RotBox => _rotboxRenderer.RenderToBuffer(RotBox.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(190, 175, 155),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.Hybrid => _hybridRenderer.RenderToBuffer(Hybrid.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(190, 170, 145),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.QJBox => _qjboxRenderer.RenderToBuffer(QJBox.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(195, 170, 145),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.Menger => _mengerRenderer.RenderToBuffer(Menger.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(195, 170, 145),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.Bicomplex => _bicomplexRenderer.RenderToBuffer(Bicomplex.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(200, 175, 150),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.Apollonian => _apollonianRenderer.RenderToBuffer(Apollonian.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(200, 175, 150),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.Phoenix => _phoenixRenderer.RenderToBuffer(Phoenix.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(210, 180, 150),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.Biomorph => _biomorphRenderer.RenderToBuffer(Biomorph.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(220, 180, 140),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.Attractor => _attractorRenderer.RenderToBuffer(Attractor.ToRenderParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(230, 120, 70),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.Kleinian => _kleinianRenderer.RenderToBuffer(Kleinian.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(150, 125, 100),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.Kifs => _kifsRenderer.RenderToBuffer(Kifs.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(150, 125, 100),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.Mosely => _moselyRenderer.RenderToBuffer(Mosely.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(170, 150, 130),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.PseudoKleinian4D => _pk4dRenderer.RenderToBuffer(PseudoKleinian4D.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(165, 150, 130),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.RiemannSphere => _riemannRenderer.RenderToBuffer(RiemannSphere.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(205, 160, 135),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.Mandalay => _mandalayRenderer.RenderToBuffer(Mandalay.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(175, 165, 150),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.Anisotropic => _anisoRenderer.RenderToBuffer(Anisotropic.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(160, 158, 170),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.OrbitHybrid => _orbitHybridRenderer.RenderToBuffer(OrbitHybrid.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(195, 170, 135),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 FractalType.Mandelbox => _boxRenderer.RenderToBuffer(Mandelbox.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(170, 150, 130),
                     lightDirection: Light.ToDirection(),
                     palette: Palette.ToParams(),
                     tileRows: 64),
                 _ => _boxRenderer.RenderToBuffer(Fractal.ToParams(), camera,
-                    PreviewWidth, PreviewHeight, PreviewSettings(),
+                    rw, rh, PreviewSettings(),
                     background: new Color(0.02f, 0.03f, 0.07f),
                     surface: Color.Rgb(150, 125, 100),
                     lightDirection: Light.ToDirection(),
@@ -988,16 +1023,31 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         return (w, h);
     }
 
-    private RaymarchSettings PreviewSettings() => new(
-        MaxSteps: 160, HitEpsilon: 1.5e-3f, MaxDistance: 40f, NormalEpsilon: 2e-3f,
-        EnableSoftShadows: false, ShadowSteps: 0, ShadowSoftness: 12f,
-        EnableAmbientOcclusion: true, AOSamples: 4, AOStepDistance: 0.05f, AOIntensity: 1.0f,
-        HeroSamples: 1,
-        EnableReflections: Reflection.Bounces > 0,
-        ReflectionBounces: Reflection.Bounces,
-        Gloss: Reflection.Gloss,
-        F0: Reflection.F0,
-        LightIntensity: Light.Intensity);
+    private RaymarchSettings PreviewSettings()
+    {
+        var effQuality = _is3DInteracting ? PreviewQuality.Fast : Quality;
+        float eps = effQuality switch
+        {
+            PreviewQuality.Fast => 1.5e-3f,
+            PreviewQuality.Balanced => 2e-4f,
+            PreviewQuality.Sharp => 2e-5f,
+            _ => 1.5e-3f
+        };
+        int steps = effQuality == PreviewQuality.Fast ? 160 : 256;
+        bool shadows = effQuality == PreviewQuality.Sharp;
+
+        return new(
+            MaxSteps: steps, HitEpsilon: eps, MaxDistance: 40f, NormalEpsilon: eps * 1.5f,
+            EnableSoftShadows: shadows, ShadowSteps: shadows ? 32 : 0, ShadowSoftness: 12f,
+            EnableAmbientOcclusion: true, AOSamples: 4, AOStepDistance: 0.05f, AOIntensity: 1.0f,
+            HeroSamples: 1,
+            EnableReflections: Reflection.Bounces > 0,
+            ReflectionBounces: Reflection.Bounces,
+            Gloss: Reflection.Gloss,
+            F0: Reflection.F0,
+            LightIntensity: Light.Intensity);
+    }
+
 
     // High quality for the hero still: more march steps, finer hit/normal
     // epsilon, soft shadows on, more AO samples. The tiled path keeps it
