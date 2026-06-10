@@ -95,7 +95,7 @@ public sealed class BicomplexState
 
             // Quality.
             new ParamDescriptor {
-                Label = "Iterations", Group = "Quality", Min = 4, Max = 64, Step = 1, Decimals = 0,
+                Label = "Iterations", Group = "Quality", Min = 4, Max = 500, Step = 1, Decimals = 0,
                 Get = () => Iterations, Set = v => Iterations = (int)Math.Round(v) },
             new ParamDescriptor {
                 Label = "Bailout", Group = "Quality", Min = 2.0, Max = 8.0, Decimals = 2,

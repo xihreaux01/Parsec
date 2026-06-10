@@ -12,7 +12,7 @@ namespace Parsec.Rendering.Raymarching;
 /// AA passes to run. Preview keeps it at 1; the hero path sets it from the UI.
 /// </summary>
 public sealed record RaymarchSettings(
-    int MaxSteps = 256,
+    int MaxSteps = 1000,
     float HitEpsilon = 1e-6f,
     float MaxDistance = 75f,
     float NormalEpsilon = 1e-6f,

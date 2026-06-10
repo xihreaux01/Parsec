@@ -31,7 +31,7 @@ public sealed class MandelbulbState
                 Label = "Power", Group = "Form", Min = 2, Max = 12, Decimals = 2,
                 Get = () => Power, Set = v => Power = (float)v },
             new ParamDescriptor {
-                Label = "Iterations", Group = "Quality", Min = 4, Max = 64, Step = 1, Decimals = 0,
+                Label = "Iterations", Group = "Quality", Min = 4, Max = 500, Step = 1, Decimals = 0,
                 Get = () => Iterations, Set = v => Iterations = (int)Math.Round(v) },
             new ParamDescriptor {
                 Label = "Bailout", Group = "Quality", Min = 1.5, Max = 4.0, Decimals = 2,
