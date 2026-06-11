@@ -1040,9 +1040,12 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         _gl.ActiveTexture(GlConst.Texture0);
         _gl.BindTexture(GlConst.Texture2D, _texture);
         _gl.Uniform1i(_samplerLocation, 0);
+        if (_modeLocation != 0) _gl.Uniform1i(_modeLocation, 0);
+        if (_alphaLocation != 0) _gl.Uniform1f(_alphaLocation, 1.0f);
         _gl.BindVertexArray(_vao);
         _gl.DrawArrays(GlConst.Triangles, 0, 3);
         _gl.BindVertexArray(0);
+        if (_showMap) DrawMap(gl, size.w, size.h);
     }
 
     private void DrawMap(GlInterface gl, int rw, int rh)
