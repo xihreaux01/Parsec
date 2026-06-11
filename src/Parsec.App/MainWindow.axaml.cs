@@ -402,7 +402,7 @@ public partial class MainWindow : Window
     private string AnimDir() => System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Parsec", "anim");
 
-    private void OnTestRenderClick(object? sender, RoutedEventArgs e)
+        private void OnTestRenderClick(object? sender, RoutedEventArgs e)
     {
         if (_view == null || _timeline == null)
         {
@@ -421,7 +421,7 @@ public partial class MainWindow : Window
         string dir = System.IO.Path.Combine(AnimDir(), $"render_{stamp}");
         var timeline = _timeline;
 
-        SetStatus($"Rendering ~{(int)(duration * RenderFps)} frames at {TestWidth}x{TestHeight}... (window will pause)");
+        SetStatus($"Rendering ~{(int)(duration * RenderFps)} frames at {TestWidth}x{TestHeight}...");
 
         // The apply-callback runs on the GL thread inside the batch loop; it sets
         // the live params for playback time t via the timeline interpolator.
@@ -430,7 +430,49 @@ public partial class MainWindow : Window
 
         // Stitch hint: print the ffmpeg command for turning frames into a video.
         string mp4 = System.IO.Path.Combine(dir, "out.mp4");
-        Console.WriteLine($"To stitch: ffmpeg -framerate {RenderFps} -i \"{System.IO.Path.Combine(dir, "frame_%05d.png")}\" -c:v libx264 -pix_fmt yuv420p \"{mp4}\"");
+        string cmd = $"ffmpeg -framerate {RenderFps} -i \"{System.IO.Path.Combine(dir, "frame_%05d.png")}\" -c:v libx264 -pix_fmt yuv420p \"{mp4}\"";
+        Console.WriteLine($"To stitch: {cmd}");
+        
+        // Setup an event to automatically run ffmpeg when the render completes
+        Action<string>? onComplete = null;
+        onComplete = (text) => 
+        {
+            _view.AnimationRenderComplete -= onComplete; // Unsubscribe
+            if (text.Contains("failed")) return;
+            
+            SetStatus("Stitching frames into MP4 video with FFmpeg...");
+            System.Threading.Tasks.Task.Run(() => 
+            {
+                try 
+                {
+                    var process = new System.Diagnostics.Process();
+                    process.StartInfo.FileName = "ffmpeg";
+                    process.StartInfo.Arguments = $"-y -framerate {RenderFps} -i \"{System.IO.Path.Combine(dir, "frame_%05d.png")}\" -c:v libx264 -pix_fmt yuv420p \"{mp4}\"";
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.CreateNoWindow = true;
+                    process.Start();
+                    process.WaitForExit();
+                    
+                    if (process.ExitCode == 0)
+                    {
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() => 
+                            SetStatus($"Video ready: {mp4}"));
+                    }
+                    else
+                    {
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() => 
+                            SetStatus("FFmpeg stitching failed. Check console."));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => 
+                        SetStatus($"FFmpeg error: {ex.Message}"));
+                }
+            });
+        };
+        
+        _view.AnimationRenderComplete += onComplete;
     }
 
     private void OnSaveAnimClick(object? sender, RoutedEventArgs e)
