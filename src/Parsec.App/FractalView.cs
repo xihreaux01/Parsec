@@ -285,7 +285,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
     // --- Animation batch render ---
     private bool _animPending;
     private string? _animDir;
-    private int _animWidth, _animHeight, _animFrameCount;
+    private int _animWidth, _animHeight, _animFrameCount, _animCurrentFrame;
     private double _animFps;
     private Action<double>? _animApplyAtTime;   // applies interpolated state at time t (seconds)
 
@@ -311,6 +311,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         _animFps = fps;
         _animFrameCount = Math.Max(1, (int)Math.Round(durationSeconds * fps));
         _animApplyAtTime = applyAtTime;
+        _animCurrentFrame = 0;
         _animPending = true;
         RequestNextFrameRendering();
     }
@@ -716,38 +717,47 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
             }
         }
 
-        // Animation batch render: run the whole frame loop here (GL context is
-        // current). Synchronous -- the UI freezes until done (fine for a test).
+        // Animation batch render: run ONE frame per OpenGL tick so the UI does
+        // not freeze and progress can be monitored smoothly.
         if (_animPending && _animDir != null && _animApplyAtTime != null)
         {
             int total = _animFrameCount;
+            int frame = _animCurrentFrame;
             string dir = _animDir;
             try
             {
-                System.IO.Directory.CreateDirectory(dir);
-                for (int frame = 0; frame < total; frame++)
-                {
-                    double t = frame / _animFps;
-                    _animApplyAtTime(t);                       // set live params for this time
-                    using var bmp = RenderActiveTo(_animWidth, _animHeight);
-                    string path = System.IO.Path.Combine(dir, $"frame_{frame:D5}.png");
-                    Parsec.Rendering.Output.ImageOutput.SavePng(bmp, path);
+                if (frame == 0) System.IO.Directory.CreateDirectory(dir);
+                
+                double t = frame / _animFps;
+                _animApplyAtTime(t);                       // set live params for this time
+                using var bmp = RenderActiveTo(_animWidth, _animHeight);
+                string path = System.IO.Path.Combine(dir, $"frame_{frame:D5}.png");
+                Parsec.Rendering.Output.ImageOutput.SavePng(bmp, path);
 
-                    int done = frame + 1;
-                    if (done == total || done % 5 == 0)
-                        Dispatcher.UIThread.Post(() => AnimationProgress?.Invoke(done, total));
+                int done = frame + 1;
+                Dispatcher.UIThread.Post(() => AnimationProgress?.Invoke(done, total));
+                
+                _animCurrentFrame++;
+                if (_animCurrentFrame < total)
+                {
+                    // Re-request frame rendering to do the next frame on the next tick
+                    RequestNextFrameRendering();
                 }
-                Dispatcher.UIThread.Post(() =>
-                    AnimationRenderComplete?.Invoke($"Rendered {total} frames to {dir}"));
+                else
+                {
+                    Dispatcher.UIThread.Post(() =>
+                        AnimationRenderComplete?.Invoke($"Rendered {total} frames to {dir}"));
+                    _animPending = false;
+                    _animDir = null;
+                    _animApplyAtTime = null;
+                    _dirty = true;
+                }
             }
             catch (Exception ex)
             {
                 string msg = ex.Message;
                 Dispatcher.UIThread.Post(() =>
                     AnimationRenderComplete?.Invoke($"Animation render failed: {msg}"));
-            }
-            finally
-            {
                 _animPending = false;
                 _animDir = null;
                 _animApplyAtTime = null;
