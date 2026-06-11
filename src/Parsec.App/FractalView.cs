@@ -167,6 +167,18 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         combined.AddRange(Palette.BuildSchema().Parameters);
         combined.AddRange(Reflection.BuildSchema().Parameters);
         combined.AddRange(Light.BuildSchema().Parameters);
+
+        // Inject camera properties into the schema so the timeline can capture/animate them.
+        var camParams = new ParamDescriptor[]
+        {
+            new ParamDescriptor { Label = "Cam X", Group = "Camera", Min=-100, Max=100, Get = () => _cam.Position.X, Set = v => _cam.Position = _cam.Position with { X = (float)v } },
+            new ParamDescriptor { Label = "Cam Y", Group = "Camera", Min=-100, Max=100, Get = () => _cam.Position.Y, Set = v => _cam.Position = _cam.Position with { Y = (float)v } },
+            new ParamDescriptor { Label = "Cam Z", Group = "Camera", Min=-100, Max=100, Get = () => _cam.Position.Z, Set = v => _cam.Position = _cam.Position with { Z = (float)v } },
+            new ParamDescriptor { Label = "Cam Yaw", Group = "Camera", Min=-MathF.PI, Max=MathF.PI, Get = () => _cam.Yaw, Set = v => _cam.Yaw = (float)v },
+            new ParamDescriptor { Label = "Cam Pitch", Group = "Camera", Min=-1.55f, Max=1.55f, Get = () => _cam.Pitch, Set = v => _cam.Pitch = (float)v },
+            new ParamDescriptor { Label = "Cam Roll", Group = "Camera", Min=-MathF.PI, Max=MathF.PI, Get = () => _cam.Roll, Set = v => _cam.Roll = (float)v },
+        };
+        combined.AddRange(camParams);
         return new ParamSchema { Parameters = combined };
     }
 
