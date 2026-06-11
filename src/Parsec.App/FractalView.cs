@@ -51,7 +51,11 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
     private Parsec.Core.Attractors.AttractorHash? _attractorHash;
     private bool _attractorNeedsRegen = true;
     private uint _texture, _vao, _blitProgram;
-    private int _samplerLocation;
+    private uint _mapTexture;
+    private bool _showMap = true;
+    public bool ShowMap { get => _showMap; set { _showMap = value; _dirty = true; } }
+
+    private int _samplerLocation, _modeLocation, _alphaLocation, _tipLoc, _b1Loc, _b2Loc, _b3Loc, _lightLoc;
     private bool _ready;
     private bool _dirty = true;
 
@@ -642,7 +646,14 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
 
             _vao = _gl.GenVertexArray();
             _blitProgram = _gl.CreateGraphicsProgram(BlitVertexSrc, BlitFragmentSrc);
-            _samplerLocation = _gl.GetUniformLocation(_blitProgram, "uTex");
+                        _samplerLocation = _gl.GetUniformLocation(_blitProgram, "uTex");
+            _modeLocation = _gl.GetUniformLocation(_blitProgram, "uMode");
+            _alphaLocation = _gl.GetUniformLocation(_blitProgram, "uAlpha");
+            _tipLoc = _gl.GetUniformLocation(_blitProgram, "uIconTip");
+            _b1Loc = _gl.GetUniformLocation(_blitProgram, "uIconB1");
+            _b2Loc = _gl.GetUniformLocation(_blitProgram, "uIconB2");
+            _b3Loc = _gl.GetUniformLocation(_blitProgram, "uIconB3");
+            _lightLoc = _gl.GetUniformLocation(_blitProgram, "uLightPos");
             _ready = true;
         }
         catch (Exception ex)
@@ -1034,12 +1045,108 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         _gl.BindVertexArray(0);
     }
 
+    private void DrawMap(GlInterface gl, int rw, int rh)
+    {
+        if (ActiveType == FractalType.DeepZoom || _gl == null) return;
+        var (radius, uiScale) = GetMapMetrics();
+        int baseMapSize = Math.Min(rw, rh) / 4;
+        if (baseMapSize < 120) baseMapSize = 120;
+        int mapW = (int)(baseMapSize * uiScale);
+        int mapH = mapW;
+
+        float camDist = radius * 2.8f + 0.5f;
+        var mapCamPos = System.Numerics.Vector3.Normalize(new System.Numerics.Vector3(0.7f, 0.7f, 1.0f)) * camDist;
+        var mapTarget = System.Numerics.Vector3.Zero;
+        var mapFwd = System.Numerics.Vector3.Normalize(mapTarget - mapCamPos);
+        var mapRight = System.Numerics.Vector3.Normalize(System.Numerics.Vector3.Cross(mapFwd, System.Numerics.Vector3.UnitY));
+        var mapUp = System.Numerics.Vector3.Cross(mapRight, mapFwd);
+        float tanY = MathF.Tan(MathF.PI / 5f * 0.5f);
+        
+        System.Numerics.Vector2 Project(System.Numerics.Vector3 p) {
+            var D = p - mapCamPos;
+            float z = System.Numerics.Vector3.Dot(D, mapFwd);
+            if (z < 0.1f) return new System.Numerics.Vector2(-10, -10);
+            return new System.Numerics.Vector2(0.5f + 0.5f * (System.Numerics.Vector3.Dot(D, mapRight) / (z * tanY)), 
+                                               0.5f + 0.5f * (System.Numerics.Vector3.Dot(D, mapUp) / (z * tanY)));
+        }
+
+        float sc = radius * 0.08f;
+        if (sc < 0.15f) sc = 0.15f;
+        var tip = Project(_cam.Position + _cam.Forward * sc);
+        var b1 = Project(_cam.Position - _cam.Forward * sc * 0.2f + _cam.Right * sc * 0.25f);
+        var b2 = Project(_cam.Position - _cam.Forward * sc * 0.2f - _cam.Right * sc * 0.15f + _cam.UpLocal * sc * 0.2f);
+        var b3 = Project(_cam.Position - _cam.Forward * sc * 0.2f - _cam.Right * sc * 0.15f - _cam.UpLocal * sc * 0.2f);
+        var lightPos = Project(Light.ToDirection() * radius * 2.5f);
+
+        var mapIter = ActiveType switch {
+            FractalType.Mandelbulb => 6,
+            FractalType.OrbitHybrid => 12,
+            FractalType.Mandelbox => 10,
+            _ => 8
+        };
+        var mapCamera3D = new Camera3D(mapCamPos, mapTarget, System.Numerics.Vector3.UnitY, MathF.PI/5f, 1.0f);
+        
+        uint[]? mapPixels = ActiveType switch
+        {
+            FractalType.AmazingBox => _boxRenderer?.RenderToBuffer(Fractal.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.Mandelbox => _boxRenderer?.RenderToBuffer(Mandelbox.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.Kifs => _kifsRenderer?.RenderToBuffer(Kifs.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.Kleinian => _kleinianRenderer?.RenderToBuffer(Kleinian.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.Mandelbulb => _mandelbulbRenderer?.RenderToBuffer(Mandelbulb.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.Menger => _mengerRenderer?.RenderToBuffer(Menger.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.Apollonian => _apollonianRenderer?.RenderToBuffer(Apollonian.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.RotBox => _rotboxRenderer?.RenderToBuffer(RotBox.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.Hybrid => _hybridRenderer?.RenderToBuffer(Hybrid.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.QJBox => _qjboxRenderer?.RenderToBuffer(QJBox.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.Bicomplex => _bicomplexRenderer?.RenderToBuffer(Bicomplex.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.Phoenix => _phoenixRenderer?.RenderToBuffer(Phoenix.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.Biomorph => _biomorphRenderer?.RenderToBuffer(Biomorph.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.Mosely => _moselyRenderer?.RenderToBuffer(Mosely.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.PseudoKleinian4D => _pk4dRenderer?.RenderToBuffer(PseudoKleinian4D.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.RiemannSphere => _riemannRenderer?.RenderToBuffer(RiemannSphere.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.Mandalay => _mandalayRenderer?.RenderToBuffer(Mandalay.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.Anisotropic => _anisoRenderer?.RenderToBuffer(Anisotropic.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.OrbitHybrid => _orbitHybridRenderer?.RenderToBuffer(OrbitHybrid.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.BurningShip => _burningShipRenderer?.RenderToBuffer(BurningShip.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            FractalType.QuaternionJulia => _qjuliaRenderer?.RenderToBuffer(QuaternionJulia.ToParams() with { Iterations = mapIter }, mapCamera3D, mapW, mapH, MapSettings(), Color.Transparent, Color.Rgb(150, 180, 220), Light.ToDirection(), Palette.ToParams()),
+            _ => null
+        };
+
+        if (mapPixels == null || mapPixels.Length == 0) return;
+
+        if (_mapTexture == 0) _mapTexture = _gl.GenTexture();
+        _gl.BindTexture(GlConst.Texture2D, _mapTexture);
+        _gl.TexParameteri(GlConst.Texture2D, GlConst.TextureMinFilter, (int)GlConst.Linear);
+        _gl.TexParameteri(GlConst.Texture2D, GlConst.TextureMagFilter, (int)GlConst.Linear);
+        unsafe { fixed (uint* p = mapPixels) { _gl.TexImage2D(GlConst.Texture2D, 0, (int)GlConst.Rgba8, mapW, mapH, 0, GlConst.Rgba, GlConst.UnsignedByte, (IntPtr)p); } }
+
+        _gl.Enable(GlConst.Blend);
+        _gl.BlendFunc(GlConst.SrcAlpha, GlConst.OneMinusSrcAlpha);
+        _gl.Viewport(rw - mapW - 20, rh - mapH - 20, mapW, mapH);
+        
+        _gl.UseProgram(_blitProgram);
+        _gl.ActiveTexture(GlConst.Texture0);
+        _gl.BindTexture(GlConst.Texture2D, _mapTexture);
+        _gl.Uniform1i(_samplerLocation, 0);
+        _gl.Uniform1i(_modeLocation, 1);
+        _gl.Uniform1f(_alphaLocation, 0.85f);
+        _gl.Uniform2f(_tipLoc, tip.X, tip.Y);
+        _gl.Uniform2f(_b1Loc, b1.X, b1.Y);
+        _gl.Uniform2f(_b2Loc, b2.X, b2.Y);
+        _gl.Uniform2f(_b3Loc, b3.X, b3.Y);
+        _gl.Uniform2f(_lightLoc, lightPos.X, lightPos.Y);
+        _gl.BindVertexArray(_vao);
+        _gl.DrawArrays(GlConst.Triangles, 0, 3);
+        _gl.Disable(GlConst.Blend);
+    }
+
     protected override void OnOpenGlDeinit(GlInterface gl)
     {
         _moveTimer?.Stop();
         _moveTimer = null;
         if (_gl == null) return;
         if (_texture != 0) _gl.DeleteTexture(_texture);
+        if (_mapTexture != 0) _gl.DeleteTexture(_mapTexture);
         if (_vao != 0) _gl.DeleteVertexArray(_vao);
         if (_blitProgram != 0) _gl.DeleteProgram(_blitProgram);
         _boxRenderer?.Dispose();
@@ -1100,6 +1207,33 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         int h = Math.Max(1, (int)(Bounds.Height * scaling));
         return (w, h);
     }
+
+    private (float radius, float uiScale) GetMapMetrics()
+    {
+        return ActiveType switch {
+            FractalType.Mandelbulb => (1.3f, 1.0f),
+            FractalType.Mandelbox => (6.0f, 1.25f),
+            FractalType.AmazingBox => (5.0f, 1.2f),
+            FractalType.RotBox => (8.0f, 1.3f),
+            FractalType.Kifs => (6.0f, 1.25f),
+            FractalType.Kleinian => (6.0f, 1.25f),
+            FractalType.Menger => (3.5f, 1.15f),
+            FractalType.Apollonian => (3.5f, 1.15f),
+            FractalType.PseudoKleinian4D => (8.0f, 1.3f),
+            FractalType.OrbitHybrid => (16.0f, 1.5f),
+            FractalType.BurningShip => (2.0f, 1.05f),
+            FractalType.QuaternionJulia => (2.0f, 1.05f),
+            FractalType.RiemannSphere => (3.0f, 1.2f),
+            _ => (5.0f, 1.2f)
+        };
+    }
+
+    private RaymarchSettings MapSettings() => new(
+        MaxSteps: 128, HitEpsilon: 2e-3f, MaxDistance: 40f, NormalEpsilon: 5e-3f,
+        EnableSoftShadows: false, ShadowSteps: 0, ShadowSoftness: 12f,
+        EnableAmbientOcclusion: false, AOSamples: 0, AOStepDistance: 0.05f, AOIntensity: 1.0f,
+        HeroSamples: 1, Quality: PreviewQuality.Fast,
+        EnableReflections: false, ReflectionBounces: 0, Gloss: 0, F0: 0, LightIntensity: 0.8f);
 
     private RaymarchSettings PreviewSettings()
     {
@@ -1235,11 +1369,37 @@ void main() {
     gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
 }";
 
-    private const string BlitFragmentSrc = @"#version 430 core
+        private const string BlitFragmentSrc = @"#version 430 core
 in vec2 vUv;
 out vec4 fragColor;
 uniform sampler2D uTex;
+uniform int uMode;
+uniform float uAlpha;
+uniform vec2 uIconTip;
+uniform vec2 uIconB1;
+uniform vec2 uIconB2;
+uniform vec2 uIconB3;
+uniform vec2 uLightPos;
+
+float cross2d(vec2 a, vec2 b) { return a.x * b.y - a.y * b.x; }
+bool inTri(vec2 p, vec2 a, vec2 b, vec2 c) {
+    float s1 = cross2d(b - a, p - a);
+    float s2 = cross2d(c - b, p - b);
+    float s3 = cross2d(a - c, p - c);
+    return (s1 > 0.0 && s2 > 0.0 && s3 > 0.0) || (s1 < 0.0 && s2 < 0.0 && s3 < 0.0);
+}
+
 void main() {
-    fragColor = texture(uTex, vec2(vUv.x, 1.0 - vUv.y));
+    vec4 col = texture(uTex, vec2(vUv.x, 1.0 - vUv.y));
+    if (uMode == 1) {
+        vec3 bg = vec3(0.04, 0.04, 0.06);
+        vec3 finalCol = mix(bg, col.rgb, col.a);
+        float dLight = distance(vUv, uLightPos);
+        if (dLight < 0.02) finalCol = mix(finalCol, vec3(1.0, 1.0, 0.9), 1.0 - smoothstep(0.01, 0.02, dLight));
+        if (inTri(vUv, uIconTip, uIconB1, uIconB2) || inTri(vUv, uIconTip, uIconB2, uIconB3) || inTri(vUv, uIconTip, uIconB3, uIconB1)) finalCol = vec3(1.0, 0.75, 0.1);
+        fragColor = vec4(finalCol, uAlpha);
+    } else {
+        fragColor = col;
+    }
 }";
 }
