@@ -414,6 +414,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
     private const float RollSpeed = 1.2f;        // radians per second for Z/C bank
 
     public event Action<string>? StatusChanged;
+    public event Action? CameraMoved;
     private void Status(string text) => StatusChanged?.Invoke(text);
 
     public FractalView()
@@ -482,6 +483,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         _cam.Look(dx * LookSensitivity, -dy * LookSensitivity);
         _dirty = true;
         RequestNextFrameRendering();
+        CameraMoved?.Invoke();
     }
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)

@@ -38,7 +38,10 @@ public partial class MainWindow : Window
         var selector = this.FindControl<ComboBox>("FractalSelector");
 
         if (_view != null && status != null)
+        {
             _view.StatusChanged += text => status.Text = text;
+            _view.CameraMoved += OnParamChanged;
+        }
 
         if (selector != null)
         {
@@ -292,7 +295,7 @@ public partial class MainWindow : Window
         if (_timeline == null) return;
         StopPlayback();
         _timeline.Select(index);
-        _bank?.Refresh(_timeline);
+        
         // If the selected slot is already set, restore its values so the user
         // sees that keyframe's look (and edits start from it).
         if (_timeline.IsSet(index))
@@ -301,6 +304,12 @@ public partial class MainWindow : Window
             RefreshPanelValues();
             _view?.MarkDirty();
         }
+        else
+        {
+            // If the slot is empty, instantly capture the current state into it!
+            _timeline.CaptureInto(index);
+        }
+        _bank?.Refresh(_timeline);
     }
 
     private void OnCellCleared(int index)
