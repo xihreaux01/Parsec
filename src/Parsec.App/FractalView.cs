@@ -1232,7 +1232,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
     }
 
     private RaymarchSettings MapSettings() => new(
-        MaxSteps: 128, HitEpsilon: 2e-3f, MaxDistance: 40f, NormalEpsilon: 5e-3f,
+        MaxSteps: 128, HitEpsilon: 2e-3f, MaxDistance: 200f, NormalEpsilon: 5e-3f,
         EnableSoftShadows: false, ShadowSteps: 0, ShadowSoftness: 12f,
         EnableAmbientOcclusion: false, AOSamples: 0, AOStepDistance: 0.05f, AOIntensity: 1.0f,
         HeroSamples: 1, Quality: PreviewQuality.Fast,
@@ -1252,7 +1252,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
         bool shadows = effQuality == PreviewQuality.Sharp;
 
         return new(
-            MaxSteps: steps, HitEpsilon: eps, MaxDistance: 40f, NormalEpsilon: eps * 1.5f,
+            MaxSteps: steps, HitEpsilon: eps, MaxDistance: 200f, NormalEpsilon: eps * 1.5f,
             EnableSoftShadows: shadows, ShadowSteps: shadows ? 32 : 0, ShadowSoftness: 12f,
             EnableAmbientOcclusion: true, AOSamples: 4, AOStepDistance: 0.05f, AOIntensity: 1.0f,
             HeroSamples: 1, Quality: effQuality,
@@ -1354,7 +1354,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
     // preview, sparse at hero). A coarse epsilon catches the same surface the preview
     // does, and the DE can't resolve finer than that anyway.
     private RaymarchSettings HeroSettings(float eps) => new(
-        MaxSteps: 2000, HitEpsilon: eps, MaxDistance: 50f, NormalEpsilon: eps,
+        MaxSteps: 2000, HitEpsilon: eps, MaxDistance: 250f, NormalEpsilon: eps,
         EnableSoftShadows: true, ShadowSteps: 64, ShadowSoftness: 14f,
         EnableAmbientOcclusion: true, AOSamples: 6, AOStepDistance: 0.04f, AOIntensity: 1.0f,
         HeroSamples: Math.Max(1, HeroSampleCount), Quality: PreviewQuality.Sharp,

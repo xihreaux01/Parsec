@@ -16,7 +16,7 @@ public enum PreviewQuality { Fast, Balanced, Sharp }
 public sealed record RaymarchSettings(
     int MaxSteps = 1000,
     float HitEpsilon = 1e-6f,
-    float MaxDistance = 75f,
+    float MaxDistance = 200f,
     float NormalEpsilon = 1e-6f,
     bool EnableSoftShadows = true,
     int ShadowSteps = 64,
