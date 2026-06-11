@@ -3,7 +3,7 @@
         xmlns:app="using:Parsec.App"
         x:Class="Parsec.App.MainWindow"
         WindowState="Maximized"
-        Title="Parsec — Fractal Explorer"
+        Title="Parsec Hyperdrive — Fractal Explorer"
         Background="#15151a">
   <Grid ColumnDefinitions="*,280">
     <Grid Grid.Column="0" RowDefinitions="*,Auto">

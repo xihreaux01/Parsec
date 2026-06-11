@@ -1,8 +1,8 @@
-# Parsec
+# Parsec Hyperdrive
 
 A GPU-accelerated explorer for 2D and 3D fractals - built in C# with [Avalonia](https://avaloniaui.net/) and OpenGL compute shaders.
 
-Parsec renders distance-estimated 3D fractals (Mandelbox, Mandelbulb, Kleinian groups, Menger sponges, and many more) in real time with a fly camera, and explores classic 2D escape-time sets (Mandelbrot, Julia, Burning Ship) with true perturbation-based deep zoom. It has a keyframe animation system, high-resolution "hero" stills, and video export (through FFMPEG).
+Parsec Hyperdrive renders distance-estimated 3D fractals (Mandelbox, Mandelbulb, Kleinian groups, Menger sponges, and many more) in real time with a fly camera, and explores classic 2D escape-time sets (Mandelbrot, Julia, Burning Ship) with true perturbation-based deep zoom. It has a keyframe animation system, high-resolution "hero" stills, and video export (through FFMPEG).
 
 <img width="1870" height="1870" alt="Screenshot 2026-05-30 125912" src="https://github.com/user-attachments/assets/51c61924-0efb-472c-8a2d-b915ea5258d7" />
 
@@ -71,7 +71,7 @@ A perturbation-theory escape-time explorer with four formulas — **Mandelbrot, 
 
 ## Known limitations
 
-Parsec is a personal project shared in the hope it's useful — these are the rough edges to expect:
+Parsec Hyperdrive is a personal project shared in the hope it's useful — these are the rough edges to expect:
 
 - **Deep-zoom Burning Ship at very wide views.** Perturbation is unreliable for the abs-fold map when the delta is large; the renderer uses direct fp64 at shallow zoom to compensate, but extreme wide framings can still show boundary noise. Zoom in for clean results.
 - **Fly-camera speed near some 3D fractals.** A few chapters lack a CPU distance-estimate mirror, so the camera glides at a constant speed near them instead of slowing into detail. Purely a navigation nicety, not a render issue.
