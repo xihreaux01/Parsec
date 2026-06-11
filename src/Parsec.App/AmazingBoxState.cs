@@ -74,4 +74,15 @@ public sealed class AmazingBoxState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 14;
+        Scale = -1.5f;
+        FoldingLimit = 1.0f;
+        MinRadius = 0.5f;
+        FixedRadius = 1.0f;
+        RotX = 13f * MathF.PI / 180f;
+        RotY = 9f * MathF.PI / 180f;
+        RotZ = -20f * MathF.PI / 180f;
+        Fudge = 0.8f;
+    }}

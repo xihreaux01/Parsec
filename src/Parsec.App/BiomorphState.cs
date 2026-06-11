@@ -96,4 +96,13 @@ public sealed class BiomorphState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 16;
+        Cx = -0.5f; Cy = 0.5f; Cz = 0.0f;
+        Bailout = 10.0f;
+        Cut = 1;
+        PlaneNx = 0.3f; PlaneNy = 0.5f; PlaneNz = 0.8f;
+        PlaneOffset = 0.0f;
+        Fudge = 0.85f;
+    }}

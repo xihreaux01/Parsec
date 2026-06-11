@@ -125,4 +125,19 @@ public sealed class PseudoKleinian4DState
                 Get = () => BoundRadius, Set = v => BoundRadius = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 12;
+        Mode = 0;
+        InversionMode = 1;
+        BoxX = 1.0f; BoxY = 1.0f; BoxZ = 1.0f;
+        SphereFoldScale = 1.0f;
+        OffX = 0.0f; OffY = 0.0f; OffZ = 0.0f;
+        W0 = 0.0f;
+        TubeRadius = 0.0f;
+        DeOffset = 0.0f;
+        DeTweak = 0.05f;
+        InversionScale = 1.0f;
+        Fudge = 0.6f;
+        BoundRadius = 8.0f;
+    }}

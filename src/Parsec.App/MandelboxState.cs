@@ -20,7 +20,7 @@ namespace Parsec.App;
 public sealed class MandelboxState
 {
     public int Iterations = 14;
-    public float Scale = -1.5f;        // negative -> the classic hollow form
+    public float Scale = 2.0f; // optimal classic cityscape        // negative -> the classic hollow form
     public float FoldingLimit = 1.0f;
     public float MinRadius = 0.5f;
     public float FixedRadius = 1.0f;
@@ -83,4 +83,15 @@ public sealed class MandelboxState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 14;
+        Scale = 2.0f;
+        FoldingLimit = 1.0f;
+        MinRadius = 0.5f;
+        FixedRadius = 1.0f;
+        RotX = 0f;
+        RotY = 0f;
+        RotZ = 0f;
+        Fudge = 0.9f;
+    }}

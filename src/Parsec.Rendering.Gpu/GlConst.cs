@@ -59,4 +59,9 @@ public static class GlConst
     public const uint ColorBufferBit = 0x00004000;
     public const uint Triangles = 0x0004;
     public const uint TriangleStrip = 0x0005;
+
+    // Blending
+    public const uint Blend = 0x0BE2;
+    public const uint SrcAlpha = 0x0302;
+    public const uint OneMinusSrcAlpha = 0x0303;
 }

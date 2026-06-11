@@ -67,4 +67,10 @@ public sealed class MoselyState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 16;
+        Scale = 3.0f;
+        Body = 1.4f;
+        TwistDeg = 0f;
+    }}

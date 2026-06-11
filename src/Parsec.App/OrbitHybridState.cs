@@ -113,4 +113,18 @@ public sealed class OrbitHybridState
                 Get = () => BoundRadius, Set = v => BoundRadius = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 16;
+        KifsCount = 1;
+        MboxCount = 2;
+        KifsScale = 1.6f;
+        MboxScale = -1.5f;
+        MinRadius = 0.5f;
+        FixedRadius = 1.0f;
+        PostRotX = 0.2f; PostRotY = 0.1f; PostRotZ = 0.0f;
+        BoxFoldLimit = 1.0f;
+        Bailout = 30.0f;
+        Fudge = 1.0f;
+        BoundRadius = 16.0f;
+    }}

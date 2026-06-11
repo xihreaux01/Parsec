@@ -23,6 +23,7 @@ namespace Parsec.App;
 public sealed class ParameterPanel : UserControl
 {
     public event Action? OnChanged;
+    public event Action? OnResetRequested;
 
     public ParameterPanel(ParamSchema schema)
     {
@@ -35,6 +36,22 @@ public sealed class ParameterPanel : UserControl
         };
 
         var root = new StackPanel { Margin = new Thickness(12), Spacing = 4 };
+
+        var resetButton = new Button
+        {
+            Content = "RESET TO DEFAULTS",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 16),
+            FontSize = 11,
+            FontWeight = FontWeight.SemiBold,
+            Background = new SolidColorBrush(Color.FromRgb(0x40, 0x40, 0x48)),
+            Foreground = Brushes.White,
+        };
+        resetButton.Click += (_, _) => {
+            OnResetRequested?.Invoke();
+        };
+        root.Children.Add(resetButton);
 
         foreach (var group in schema.Groups)
         {

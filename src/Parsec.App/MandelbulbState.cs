@@ -11,7 +11,7 @@ public sealed class MandelbulbState
 {
     public int Iterations = 8;
     public float Power = 8.0f;
-    public float Bailout = 2.0f;
+    public float Bailout = 4.0f;
     public float Fudge = 1.0f;
 
     public MandelbulbParams ToParams() => new()
@@ -41,4 +41,10 @@ public sealed class MandelbulbState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 8;
+        Power = 8.0f;
+        Bailout = 4.0f;
+        Fudge = 1.0f;
+    }}

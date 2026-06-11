@@ -86,4 +86,13 @@ public sealed class PaletteState
                 Get = () => ShellMix, Set = v => ShellMix = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        BaseR = 0.62f; BaseG = 0.54f; BaseB = 0.44f;
+        AmpR = 0.38f; AmpG = 0.34f; AmpB = 0.28f;
+        Frequency = 1.0f;
+        PhaseR = 0.0f; PhaseG = 0.12f; PhaseB = 0.24f;
+        TrapScale = 0.6f;
+        MixOrigin = 0.6f; MixAxis = 0.5f; MixPlane = 0.15f;
+        ShellMix = 0.35f;
+    }}

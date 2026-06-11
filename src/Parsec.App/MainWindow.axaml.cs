@@ -236,6 +236,10 @@ public partial class MainWindow : Window
         if (_view == null || _panelHost == null || _activeSchema == null) return;
         var panel = new ParameterPanel(_activeSchema);
         panel.OnChanged += OnParamChanged;
+        panel.OnResetRequested += () => {
+            _view?.ResetToDefaults();
+            RebuildPanel(); // Refresh sliders
+        };
         _panelHost.Child = panel;
     }
 

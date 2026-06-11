@@ -44,4 +44,10 @@ public sealed class TriballState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 14;
+        Scale = 1.82f;
+        Bailout = 6.0f;
+        Fudge = 0.9f;
+    }}

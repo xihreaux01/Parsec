@@ -98,6 +98,7 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
     public void SetActiveType(FractalType type)
     {
         ActiveType = type;
+        ResetToDefaults();
         MarkDirty();
     }
 
@@ -166,6 +167,80 @@ public sealed class FractalView : OpenGlControlBase, Avalonia.Rendering.ICustomH
     }
 
     /// <summary>Request a re-render (e.g. after a parameter change from the panel).</summary>
+    public void ResetToDefaults()
+    {
+        if (ActiveType == FractalType.DeepZoom)
+        {
+            _deepView.ApplyFormulaHome();
+        }
+        else
+        {
+            switch (ActiveType)
+            {
+                case FractalType.AmazingBox: Fractal.Reset(); break;
+                case FractalType.Mandelbox: Mandelbox.Reset(); break;
+                case FractalType.Kifs: Kifs.Reset(); break;
+                case FractalType.Kleinian: Kleinian.Reset(); break;
+                case FractalType.Attractor: Attractor.Reset(); break;
+                case FractalType.Mandelbulb: Mandelbulb.Reset(); break;
+                case FractalType.QuaternionJulia: QuaternionJulia.Reset(); break;
+                case FractalType.RotBox: RotBox.Reset(); break;
+                case FractalType.Hybrid: Hybrid.Reset(); break;
+                case FractalType.QJBox: QJBox.Reset(); break;
+                case FractalType.Menger: Menger.Reset(); break;
+                case FractalType.Bicomplex: Bicomplex.Reset(); break;
+                case FractalType.Apollonian: Apollonian.Reset(); break;
+                case FractalType.Phoenix: Phoenix.Reset(); break;
+                case FractalType.Biomorph: Biomorph.Reset(); break;
+                case FractalType.Mosely: Mosely.Reset(); break;
+                case FractalType.PseudoKleinian4D: PseudoKleinian4D.Reset(); break;
+                case FractalType.RiemannSphere: RiemannSphere.Reset(); break;
+                case FractalType.Mandalay: Mandalay.Reset(); break;
+                case FractalType.Anisotropic: Anisotropic.Reset(); break;
+                case FractalType.OrbitHybrid: OrbitHybrid.Reset(); break;
+                case FractalType.BurningShip: BurningShip.Reset(); break;
+            }
+        }
+
+        Palette.Reset();
+        Reflection.Reset();
+        Light.Reset();
+        ResetCamera();
+        MarkDirty();
+    }
+
+        public void ResetCamera()
+    {
+        if (ActiveType == FractalType.DeepZoom) return;
+        
+        float radius = ActiveType switch {
+            FractalType.Mandelbulb => 1.3f,
+            FractalType.Mandelbox => 6.0f,
+            FractalType.AmazingBox => 5.0f,
+            FractalType.RotBox => 8.0f,
+            FractalType.Kifs => 6.0f,
+            FractalType.Kleinian => 6.0f,
+            FractalType.Menger => 3.5f,
+            FractalType.Apollonian => 3.5f,
+            FractalType.PseudoKleinian4D => 8.0f,
+            FractalType.OrbitHybrid => 16.0f,
+            FractalType.BurningShip => 2.0f,
+            FractalType.QuaternionJulia => 2.0f,
+            FractalType.RiemannSphere => 3.0f,
+            _ => 5.0f
+        };
+
+        float dist = radius * 2.5f + 1.0f;
+        float angle = System.MathF.PI / 6f; // 30 degrees off center
+        float elev = System.MathF.PI / 8f;  // slightly above
+        float cy = System.MathF.Sin(elev) * dist;
+        float r_xz = System.MathF.Cos(elev) * dist;
+        float cx = System.MathF.Sin(angle) * r_xz;
+        float cz = System.MathF.Cos(angle) * r_xz;
+        _cam.Position = new System.Numerics.Vector3(cx, cy, cz);
+        _cam.LookAt(System.Numerics.Vector3.Zero);
+    }
+
     public void MarkDirty()
     {
         _dirty = true;

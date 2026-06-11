@@ -72,4 +72,13 @@ public sealed class OctonionState
                 Get = () => StereoR, Set = v => StereoR = (float)v },
         }
     };
-}
+    public void Reset()
+    {
+        Iterations = 64;
+        Eps = 0.25f;
+        CRe = 0.28f;
+        CIm = 0.012f;
+        Fudge = 0.9f;
+        StereoK = 1.0f;
+        StereoR = 0.8f;
+    }}

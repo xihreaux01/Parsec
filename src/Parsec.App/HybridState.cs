@@ -80,4 +80,16 @@ public sealed class HybridState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 8;
+        Scale = -1.8f;
+        MinRadius = 0.5f;
+        FixedRadius = 1.0f;
+        FoldLimit = 1.0f;
+        Power = 2.0f;
+        RotXDeg = 6.9f;
+        RotYDeg = 4.6f;
+        RotZDeg = 2.3f;
+        Fudge = 0.6f;
+    }}

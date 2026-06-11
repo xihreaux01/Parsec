@@ -92,4 +92,14 @@ public sealed class QuaternionJuliaState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 10;
+        Cx = -0.2f; Cy = 0.8f; Cz = 0.0f; Cw = 0.0f;
+        WSlice = 0.0f;
+        Cut = 1;
+        CutAxis = 0;
+        PlaneOffset = 0.0f;
+        Fudge = 0.9f;
+        Stereo = 0;
+    }}

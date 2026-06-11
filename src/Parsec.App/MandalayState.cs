@@ -105,4 +105,17 @@ public sealed class MandalayState
                 Get = () => BoundRadius, Set = v => BoundRadius = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 12;
+        Mode = 0;
+        JuliaMode = 0;
+        Scale = -2.0f;
+        FoldOffset = 0.555f;
+        OffsetG = 0.0f;
+        OffsetH = 0.0f;
+        Bailout = 8.0f;
+        JuliaCx = 0.0f; JuliaCy = 0.0f; JuliaCz = 0.0f;
+        Fudge = 0.55f;
+        BoundRadius = 6.0f;
+    }}

@@ -122,4 +122,18 @@ public sealed class AttractorState
         Parameters = BuildGenerateSchema().Parameters
             .Concat(BuildLiveSchema().Parameters).ToArray(),
     };
-}
+    public void Reset()
+    {
+        B = 0.208186f;
+        Dt = 0.05f;
+        NumSteps = 200_000;
+        ParameterVariation = 0.0f;
+        AmplitudeModulation = 1.0f;
+        PhaseModAmount = 0.0f;
+        CouplingStrength = 0.0f;
+        DriftPhase = 0.0f;
+        MultiSeed = 0;
+        SeedCount = 5;
+        TubeRadius = 0.06f;
+        Fudge = 0.45f;
+    }}

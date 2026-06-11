@@ -89,4 +89,14 @@ public sealed class ApollonianState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 25;
+        Tangency = 1.0f;
+        OuterRadiusMult = 1.0f;
+        DeEnvelope = 0.30f;
+        Cut = 1;
+        PlaneNx = 0.3f; PlaneNy = 0.5f; PlaneNz = 0.8f;
+        PlaneOffset = 0.0f;
+        Fudge = 0.9f;
+    }}

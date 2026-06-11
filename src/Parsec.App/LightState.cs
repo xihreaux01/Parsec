@@ -60,4 +60,9 @@ public sealed class LightState
                 Get = () => Intensity, Set = v => Intensity = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Azimuth = 35f;
+        Elevation = 48f;
+        Intensity = 1.0f;
+    }}

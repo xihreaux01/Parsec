@@ -120,4 +120,18 @@ public sealed class AnisotropicState
                 Get = () => BoundRadius, Set = v => BoundRadius = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 10;
+        Mode = 0;
+        JuliaMode = 0;
+        Scale = 2.0f;
+        StretchX = 1.2f; StretchY = 1.0f; StretchZ = 0.8f;
+        FoldLimit = 1.0f;
+        ShearZ = 0.5f;
+        ShearY = 0.0f;
+        Bailout = 12.0f;
+        JuliaCx = 0.0f; JuliaCy = 0.0f; JuliaCz = 0.0f;
+        Fudge = 0.9f;
+        BoundRadius = 5.0f;
+    }}

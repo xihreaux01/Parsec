@@ -117,4 +117,20 @@ public sealed class QJBoxState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 8;
+        Scale = -1.8f;
+        MinRadius = 0.5f;
+        FixedRadius = 1.0f;
+        FoldLimit = 1.0f;
+        Cx = -0.2f; Cy = 0.6f; Cz = 0.1f; Cw = 0.0f;
+        WSlice = 0.0f;
+        RotXDeg = 5.7f;
+        RotYDeg = 4.0f;
+        RotZDeg = 2.3f;
+        Cut = 1;
+        CutAxis = 0;
+        PlaneOffset = 0.0f;
+        Fudge = 0.6f;
+    }}

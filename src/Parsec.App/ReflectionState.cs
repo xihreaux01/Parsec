@@ -50,4 +50,9 @@ public sealed class ReflectionState
                 Get = () => F0, Set = v => F0 = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Bounces = 0;
+        Gloss = 0.6f;
+        F0 = 0.05f;
+    }}

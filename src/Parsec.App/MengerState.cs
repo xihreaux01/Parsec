@@ -12,7 +12,7 @@ namespace Parsec.App;
 /// </summary>
 public sealed class MengerState
 {
-    public int Iterations = 6;
+    public int Iterations = 5;
     public float Scale = 3.0f;
     public float OffsetX = 1.0f;
     public float OffsetY = 1.0f;
@@ -74,4 +74,15 @@ public sealed class MengerState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 5;
+        Scale = 3.0f;
+        OffsetX = 1.0f;
+        OffsetY = 1.0f;
+        OffsetZ = 0.0f;
+        RotXDeg = 5.7f;
+        RotYDeg = 4.0f;
+        RotZDeg = 2.3f;
+        Fudge = 0.8f;
+    }}

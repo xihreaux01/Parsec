@@ -69,6 +69,12 @@ public sealed class Gl
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void D_Clear(uint mask);
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void D_DrawArrays(uint mode, int first, int count);
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void D_Uniform1i(int location, int v0);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void D_Uniform1f(int location, float v0);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void D_Uniform2f(int location, float v0, float v1);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void D_Enable(uint cap);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void D_Disable(uint cap);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void D_BlendFunc(uint sfactor, uint dfactor);
+
 
     // ---- loaded delegates ----
     private readonly D_CreateShader _createShader;
@@ -111,6 +117,12 @@ public sealed class Gl
     private readonly D_Clear _clear;
     private readonly D_DrawArrays _drawArrays;
     private readonly D_Uniform1i _uniform1i;
+    private readonly D_Uniform1f _uniform1f;
+    private readonly D_Uniform2f _uniform2f;
+    private readonly D_Enable _enable;
+    private readonly D_Disable _disable;
+    private readonly D_BlendFunc _blendFunc;
+
 
     /// <summary>
     /// Build the GL wrapper from a proc-address loader. The loader must return
@@ -170,6 +182,12 @@ public sealed class Gl
         _clear = Load<D_Clear>("glClear");
         _drawArrays = Load<D_DrawArrays>("glDrawArrays");
         _uniform1i = Load<D_Uniform1i>("glUniform1i");
+        _uniform1f = Load<D_Uniform1f>("glUniform1f");
+        _uniform2f = Load<D_Uniform2f>("glUniform2f");
+        _enable = Load<D_Enable>("glEnable");
+        _disable = Load<D_Disable>("glDisable");
+        _blendFunc = Load<D_BlendFunc>("glBlendFunc");
+
     }
 
     // ---- shader / program ----
@@ -241,6 +259,12 @@ public sealed class Gl
     public void Clear(uint mask) => _clear(mask);
     public void DrawArrays(uint mode, int first, int count) => _drawArrays(mode, first, count);
     public void Uniform1i(int location, int v0) => _uniform1i(location, v0);
+    public void Uniform1f(int location, float v0) => _uniform1f(location, v0);
+    public void Uniform2f(int location, float v0, float v1) => _uniform2f(location, v0, v1);
+    public void Enable(uint cap) => _enable(cap);
+    public void Disable(uint cap) => _disable(cap);
+    public void BlendFunc(uint sfactor, uint dfactor) => _blendFunc(sfactor, dfactor);
+
 
     /// <summary>
     /// Compile and link a vertex+fragment program (for the on-screen blit).

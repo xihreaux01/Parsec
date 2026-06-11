@@ -75,4 +75,15 @@ public sealed class RotBoxState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 12;
+        Scale = -2.0f;
+        MinRadius = 0.5f;
+        FixedRadius = 1.0f;
+        FoldLimit = 1.0f;
+        RotXDeg = 8.6f;
+        RotYDeg = 5.7f;
+        RotZDeg = 2.9f;
+        Fudge = 0.85f;
+    }}

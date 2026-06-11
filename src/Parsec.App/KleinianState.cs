@@ -66,4 +66,13 @@ public sealed class KleinianState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 9;
+        Scale = 2.0f;
+        Cell = 1.0f;
+        MinRadius = 0.5f;
+        FixedRadius = 1.0f;
+        OffX = 0.5f; OffY = 0.5f; OffZ = 1.2f;
+        Fudge = 0.7f;
+    }}

@@ -105,4 +105,19 @@ public sealed class BicomplexState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 12;
+        Cx = -0.5f; Cy = 0.0f; Cz = 0.0f; Cw = 0.0f;
+        XMul = 1.0f;
+        YMul = 1.0f;
+        ZMul = 1.0f;
+        WMul = 1.0f;
+        WAdd = 0.0f;
+        WSlice = 0.0f;
+        Bailout = 4.0f;
+        Cut = 1;
+        CutAxis = 0;
+        PlaneOffset = 0.0f;
+        Fudge = 0.85f;
+    }}

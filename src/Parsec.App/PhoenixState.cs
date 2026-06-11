@@ -104,4 +104,14 @@ public sealed class PhoenixState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 14;
+        Cx = 0.4f; Cy = 0.0f; Cz = 0.0f;
+        PMem = -0.5f;
+        Bailout = 4.0f;
+        Cut = 1;
+        PlaneNx = 0.3f; PlaneNy = 0.5f; PlaneNz = 0.8f;
+        PlaneOffset = 0.0f;
+        Fudge = 0.85f;
+    }}

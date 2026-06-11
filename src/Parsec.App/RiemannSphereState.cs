@@ -117,4 +117,17 @@ public sealed class RiemannSphereState
                 Get = () => BoundRadius, Set = v => BoundRadius = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 20;
+        JuliaMode = 0;
+        Scale = 1.0f;
+        OffsetA = 0.4f;
+        OffsetB = 0.7f;
+        Bailout = 2.0f;
+        PowerClamp = 36.0f;
+        JuliaCx = 0.0f; JuliaCy = 0.0f; JuliaCz = 0.0f;
+        RotX = 0f; RotY = 0f; RotZ = 0f;
+        Fudge = 0.6f;
+        BoundRadius = 3.0f;
+    }}

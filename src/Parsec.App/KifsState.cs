@@ -93,4 +93,16 @@ public sealed class KifsState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 16;
+        Scale = 2.0f;
+        MinRadius = 0.5f;
+        FixedRadius = 1.0f;
+        PreX = 0f; PreY = 0f; PreZ = 0f;
+        PostX = 20f * MathF.PI / 180f;
+        PostY = 15f * MathF.PI / 180f;
+        PostZ = 10f * MathF.PI / 180f;
+        PivotX = 1f; PivotY = 1f; PivotZ = 1f;
+        Fudge = 0.7f;
+    }}

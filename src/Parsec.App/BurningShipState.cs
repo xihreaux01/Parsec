@@ -46,4 +46,10 @@ public sealed class BurningShipState
                 Get = () => Fudge, Set = v => Fudge = (float)v },
         },
     };
-}
+    public void Reset()
+    {
+        Iterations = 16;
+        Power = 2.0f;
+        Bailout = 2.0f;
+        Fudge = 0.75f;
+    }}
