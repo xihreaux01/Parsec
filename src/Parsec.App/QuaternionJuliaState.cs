@@ -102,4 +102,6 @@ public sealed class QuaternionJuliaState
         PlaneOffset = 0.0f;
         Fudge = 0.9f;
         Stereo = 0;
+        StereoK = 1.0f;
+        StereoR = 0.8f;
     }}

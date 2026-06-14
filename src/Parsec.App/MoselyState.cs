@@ -73,4 +73,6 @@ public sealed class MoselyState
         Scale = 3.0f;
         Body = 1.4f;
         TwistDeg = 0f;
+        WedgeDeg = 360f;
+        Fudge = 0.9f;
     }}
