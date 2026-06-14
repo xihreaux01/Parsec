@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     private Border? _panelHost;
     private Border? _bankHost;
     private Button? _generateButton;
+    private GuideWindow? _guideWindow;
 
     // Animation timeline state.
     private KeyframeBank? _bank;
@@ -60,7 +61,10 @@ public partial class MainWindow : Window
                 // Dropdown index == formula int (Mandelbrot 0, Prospector 1,
                 // Julia 2, Burning Ship 3).
                 if (_view != null && formulaSelector.SelectedIndex >= 0)
+                {
                     _view.SetDeepFormula(formulaSelector.SelectedIndex);
+                    RefreshGuideIfOpen();
+                }
             };
 
         var previewQualitySelector = this.FindControl<ComboBox>("PreviewQualitySelector");
@@ -89,6 +93,10 @@ public partial class MainWindow : Window
         _generateButton = this.FindControl<Button>("GenerateButton");
         if (_generateButton != null)
             _generateButton.Click += OnGenerateClick;
+
+        var guideButton = this.FindControl<Button>("GuideButton");
+        if (guideButton != null)
+            guideButton.Click += OnGuideClick;
 
         var testRenderButton = this.FindControl<Button>("TestRenderButton");
         if (testRenderButton != null)
@@ -185,6 +193,35 @@ public partial class MainWindow : Window
         _view.RequestAttractorRegen();
     }
 
+    // ----------------------------------------------------------- guide window
+    private void OnGuideClick(object? sender, RoutedEventArgs e) => OpenOrRefreshGuide();
+
+    private void OpenOrRefreshGuide()
+    {
+        if (_view == null || _activeSchema == null) return;
+        var doc = FractalGuide.Build(_view.ActiveType, _view.DeepFormula, _activeSchema);
+
+        if (_guideWindow == null)
+        {
+            _guideWindow = new GuideWindow();
+            _guideWindow.Closed += (_, _) => _guideWindow = null;
+            _guideWindow.Populate(doc);
+            _guideWindow.Show();            // non-modal companion window
+        }
+        else
+        {
+            _guideWindow.Populate(doc);
+            _guideWindow.Activate();        // bring forward
+        }
+    }
+
+    private void RefreshGuideIfOpen()
+    {
+        if (_guideWindow != null && _view != null && _activeSchema != null)
+            _guideWindow.Populate(
+                FractalGuide.Build(_view.ActiveType, _view.DeepFormula, _activeSchema));
+    }
+
     // ----------------------------------------------------------- fractal switch
     private void OnFractalChanged(object? sender, SelectionChangedEventArgs e)
     {
@@ -232,6 +269,7 @@ public partial class MainWindow : Window
         if (formulaLabel != null) formulaLabel.IsVisible = deep;
 
         RebuildForActiveFractal();   // keyframes are per-fractal; reset on switch
+        RefreshGuideIfOpen();   // keep an open guide tracking the viewed fractal
     }
 
     private void RebuildPanel()
