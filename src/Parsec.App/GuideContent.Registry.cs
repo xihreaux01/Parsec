@@ -69,7 +69,7 @@ public static partial class FractalGuide
         },
         BestResults = new[]
         {
-            "Start at the default scale 2 for the solid cityscape, then flip to -1.5 to explore the fractal-zoo surface (expect to zoom in for the embedded shapes) or -2 for the dense hollow look. Keep the rotations at 0 here: the distance estimate is exact, so the marcher can take near-full steps and you can raise DE fudge toward 1.0 for speed. Raise iterations only when zooming deep; 14 is fine for overview shots.",
+            "Start at the default scale 2 for the solid cityscape, push Scale up toward 3 for the brighter open positive-scale cityscape, then flip to -1.5 to explore the fractal-zoo surface (expect to zoom in for the embedded shapes) or -2 for the dense hollow look. Keep the rotations at 0 here: the distance estimate is exact, so the marcher can take near-full steps and you can raise DE fudge toward 1.0 for speed. Raise iterations only when zooming deep; 14 is fine for overview shots.",
         },
         SettingNotes = new Dictionary<string, string>
         {
