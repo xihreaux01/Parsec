@@ -37,6 +37,16 @@ public class GuideBuilderTests
     }
 
     [Fact]
+    public void Primer_is_first_section_of_every_guide()
+    {
+        Assert.NotEmpty(FractalGuide.Primer);
+        var doc = FractalGuide.BuildDocument(Content(), TwoGroupSchema());
+        var firstHeading = doc.Blocks.OfType<GuideBlock.Heading>().First();
+        Assert.Equal("How these fractals are made (start here)", firstHeading.Text);
+        Assert.Contains(doc.Blocks.OfType<GuideBlock.Heading>(), h => h.Text == "What this fractal is");
+    }
+
+    [Fact]
     public void Settings_emitted_in_schema_group_order_with_group_headings()
     {
         var doc = FractalGuide.BuildDocument(Content(), TwoGroupSchema());
