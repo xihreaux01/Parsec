@@ -15,7 +15,7 @@ namespace Parsec.App;
 /// </summary>
 public sealed class QuaternionJuliaState
 {
-    public int Iterations = 10;
+    public int Iterations = 12;
     public float Cx = -0.2f, Cy = 0.8f, Cz = 0.0f, Cw = 0.0f;
     public float WSlice = 0.0f;
     public int Cut = 1;                 // 0/1 toggle
@@ -94,7 +94,7 @@ public sealed class QuaternionJuliaState
     };
     public void Reset()
     {
-        Iterations = 10;
+        Iterations = 12;
         Cx = -0.2f; Cy = 0.8f; Cz = 0.0f; Cw = 0.0f;
         WSlice = 0.0f;
         Cut = 1;

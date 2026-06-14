@@ -21,7 +21,7 @@ namespace Parsec.App;
 public sealed class AttractorState
 {
     // --- Generation params (require Generate) ---
-    public float B = 0.208186f;
+    public float B = 0.19f;
     public float Dt = 0.05f;
     public int NumSteps = 200_000;
 
@@ -74,7 +74,7 @@ public sealed class AttractorState
         Parameters = new[]
         {
             new ParamDescriptor {
-                Label = "Damping b", Group = "Attractor (Generate)", Min = 0.05, Max = 0.35, Decimals = 3,
+                Label = "Damping b", Group = "Attractor (Generate)", Min = 0.05, Max = 0.30, Decimals = 3,
                 Get = () => B, Set = v => B = (float)v },
             new ParamDescriptor {
                 Label = "Steps (x1000)", Group = "Attractor (Generate)", Min = 20, Max = 400, Step = 10, Decimals = 0,
@@ -124,7 +124,7 @@ public sealed class AttractorState
     };
     public void Reset()
     {
-        B = 0.208186f;
+        B = 0.19f;
         Dt = 0.05f;
         NumSteps = 200_000;
         ParameterVariation = 0.0f;

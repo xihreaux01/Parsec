@@ -15,7 +15,7 @@ namespace Parsec.App;
 /// </summary>
 public sealed class BiomorphState
 {
-    public int Iterations = 16;
+    public int Iterations = 24;
 
     // Julia constant c (vec3 in 3D Mandelbulb-style lift).
     public float Cx = -0.5f, Cy = 0.5f, Cz = 0.0f;
@@ -98,7 +98,7 @@ public sealed class BiomorphState
     };
     public void Reset()
     {
-        Iterations = 16;
+        Iterations = 24;
         Cx = -0.5f; Cy = 0.5f; Cz = 0.0f;
         Bailout = 10.0f;
         Cut = 1;

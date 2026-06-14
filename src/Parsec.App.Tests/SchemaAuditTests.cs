@@ -70,4 +70,45 @@ public class SchemaAuditTests
     {
         Assert.Equal(0.95, Desc(new ApollonianState().BuildSchema(), "Outer radius x").Min, 3);
     }
+
+    [Fact]
+    public void Thomas_damping_default_is_chaotic_and_capped()
+    {
+        var fresh = new AttractorState();
+        Assert.Equal(0.19f, fresh.B);
+        var mutated = new AttractorState { B = 0.30f };
+        mutated.Reset();
+        Assert.Equal(0.19f, mutated.B);
+        Assert.Equal(0.30, Desc(fresh.BuildSchema(), "Damping b").Max, 3);
+    }
+
+    [Fact]
+    public void Menger_offset_z_default_is_canonical_sponge()
+    {
+        var fresh = new MengerState();
+        Assert.Equal(1.0f, fresh.OffsetZ);
+        var mutated = new MengerState { OffsetZ = 0.0f };
+        mutated.Reset();
+        Assert.Equal(1.0f, mutated.OffsetZ);
+    }
+
+    [Fact]
+    public void Mandelbulb_defaults_bumped()
+    {
+        var fresh = new MandelbulbState();
+        Assert.Equal(10, fresh.Iterations);
+        Assert.Equal(8.0f, fresh.Bailout);
+        var m = new MandelbulbState { Iterations = 4, Bailout = 4.0f };
+        m.Reset();
+        Assert.Equal(10, m.Iterations);
+        Assert.Equal(8.0f, m.Bailout);
+    }
+
+    [Fact]
+    public void Iteration_defaults_bumped()
+    {
+        Assert.Equal(12, new QuaternionJuliaState().Iterations);
+        Assert.Equal(10, new QJBoxState().Iterations);
+        Assert.Equal(24, new BiomorphState().Iterations);
+    }
 }

@@ -9,9 +9,9 @@ namespace Parsec.App;
 /// </summary>
 public sealed class MandelbulbState
 {
-    public int Iterations = 8;
+    public int Iterations = 10;
     public float Power = 8.0f;
-    public float Bailout = 4.0f;
+    public float Bailout = 8.0f;
     public float Fudge = 1.0f;
 
     public MandelbulbParams ToParams() => new()
@@ -43,8 +43,8 @@ public sealed class MandelbulbState
     };
     public void Reset()
     {
-        Iterations = 8;
+        Iterations = 10;
         Power = 8.0f;
-        Bailout = 4.0f;
+        Bailout = 8.0f;
         Fudge = 1.0f;
     }}

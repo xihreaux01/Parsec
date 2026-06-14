@@ -13,7 +13,7 @@ namespace Parsec.App;
 /// </summary>
 public sealed class QJBoxState
 {
-    public int Iterations = 8;
+    public int Iterations = 10;
 
     // Mandelbox half.
     public float Scale = -1.8f;
@@ -119,7 +119,7 @@ public sealed class QJBoxState
     };
     public void Reset()
     {
-        Iterations = 8;
+        Iterations = 10;
         Scale = -1.8f;
         MinRadius = 0.5f;
         FixedRadius = 1.0f;

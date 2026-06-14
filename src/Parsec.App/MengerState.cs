@@ -16,7 +16,7 @@ public sealed class MengerState
     public float Scale = 3.0f;
     public float OffsetX = 1.0f;
     public float OffsetY = 1.0f;
-    public float OffsetZ = 0.0f;
+    public float OffsetZ = 1.0f;
 
     // Rotation in degrees.
     public float RotXDeg = 5.7f;   // ~0.10 rad
@@ -80,7 +80,7 @@ public sealed class MengerState
         Scale = 3.0f;
         OffsetX = 1.0f;
         OffsetY = 1.0f;
-        OffsetZ = 0.0f;
+        OffsetZ = 1.0f;
         RotXDeg = 5.7f;
         RotYDeg = 4.0f;
         RotZDeg = 2.3f;
