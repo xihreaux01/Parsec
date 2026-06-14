@@ -19,7 +19,7 @@ public static partial class FractalGuide
         => BuildDocument(Resolve(type, deepFormula), schema);
 
     /// <summary>Pure: turn explicit content + a schema into render-ready blocks.
-    /// No Avalonia, no GL — this is the unit-tested seam.</summary>
+    /// No Avalonia, no GL, so this is the unit-tested seam.</summary>
     public static GuideDocument BuildDocument(GuideContent content, ParamSchema schema)
     {
         var blocks = new List<GuideBlock>();

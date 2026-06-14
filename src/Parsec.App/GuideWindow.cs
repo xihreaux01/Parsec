@@ -11,7 +11,7 @@ namespace Parsec.App;
 /// A non-modal, read-only companion window that renders a <see cref="GuideDocument"/>
 /// for the active fractal. Built in code to match the ParameterPanel pattern (a
 /// UserControl/Window wrapping a ScrollViewer scrolls reliably). Content is
-/// TextBlock/SelectableTextBlock only — no TextBox — so it can be read and copied
+/// TextBlock/SelectableTextBlock only (no TextBox), so it can be read and copied
 /// but never edited. Escape closes it.
 /// </summary>
 public sealed class GuideWindow : Window
@@ -45,7 +45,7 @@ public sealed class GuideWindow : Window
     /// fractal/formula switch while open).</summary>
     public void Populate(GuideDocument doc)
     {
-        Title = $"Guide — {doc.Title}";
+        Title = $"Guide: {doc.Title}";
         _root.Children.Clear();
 
         _root.Children.Add(new SelectableTextBlock
