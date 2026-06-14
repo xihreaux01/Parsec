@@ -46,7 +46,38 @@ public static partial class FractalGuide
         blocks.Add(new GuideBlock.Heading("For best results"));
         foreach (var p in content.BestResults) blocks.Add(new GuideBlock.Paragraph(p));
 
+        AppendGlossary(blocks, content);
+
         return new GuideDocument(content.Title, blocks);
+    }
+
+    /// <summary>Scan everything this guide says (prose plus the rendered setting names
+    /// and notes) for glossary terms, and append a Glossary section defining each term
+    /// that actually appears. Nothing is appended when no obscure term is present.</summary>
+    private static void AppendGlossary(List<GuideBlock> blocks, GuideContent content)
+    {
+        var corpus = new System.Text.StringBuilder();
+        void Add(IEnumerable<string> lines)
+        {
+            foreach (var line in lines) { corpus.Append(line); corpus.Append('\n'); }
+        }
+        Add(content.WhatItIs);
+        Add(content.HowComputed);
+        Add(content.Math);
+        Add(content.BestResults);
+        foreach (var b in blocks)
+            if (b is GuideBlock.SettingDefinition d)
+            {
+                corpus.Append(d.Name); corpus.Append(' ');
+                corpus.Append(d.Note); corpus.Append('\n');
+            }
+
+        var matched = FractalGlossary.Match(corpus.ToString());
+        if (matched.Count == 0) return;
+
+        blocks.Add(new GuideBlock.Heading("Glossary"));
+        foreach (var e in matched)
+            blocks.Add(new GuideBlock.GlossaryItem(e.Term, e.Definition));
     }
 
     internal static string FormatRange(ParamDescriptor d)

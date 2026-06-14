@@ -10,6 +10,7 @@ public abstract record GuideBlock
     public sealed record Paragraph(string Text) : GuideBlock;
     public sealed record SettingGroupHeading(string Group) : GuideBlock;
     public sealed record SettingDefinition(string Name, string Range, string Note) : GuideBlock;
+    public sealed record GlossaryItem(string Term, string Definition) : GuideBlock;
 }
 
 /// <summary>Render-ready guide: a title plus an ordered list of blocks. Produced by
