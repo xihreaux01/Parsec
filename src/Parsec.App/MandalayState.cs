@@ -59,7 +59,7 @@ public sealed class MandalayState
         {
             // Form.
             new ParamDescriptor {
-                Label = "Scale", Group = "Form", Min = -3.0, Max = 3.0, Decimals = 2,
+                Label = "Scale", Group = "Form", Min = -3.0, Max = -0.5, Decimals = 2,
                 Get = () => Scale, Set = v => Scale = (float)v },
             new ParamDescriptor {
                 Label = "Fold offset", Group = "Form", Min = 0.1, Max = 1.5, Decimals = 3,

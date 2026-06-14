@@ -51,7 +51,7 @@ public sealed class ApollonianState
                 Get = () => Tangency, Set = v => Tangency = (float)v },
             new ParamDescriptor {
                 Label = "Outer radius x", Group = "Configuration",
-                Min = 0.85, Max = 1.5, Decimals = 3,
+                Min = 0.95, Max = 1.5, Decimals = 3,
                 Get = () => OuterRadiusMult, Set = v => OuterRadiusMult = (float)v },
             new ParamDescriptor {
                 Label = "DE envelope", Group = "Configuration",

@@ -109,7 +109,7 @@ public sealed class OrbitHybridState
                 Label = "DE fudge", Group = "Quality", Min = 0.3, Max = 1.5, Decimals = 2,
                 Get = () => Fudge, Set = v => Fudge = (float)v },
             new ParamDescriptor {
-                Label = "Bound radius", Group = "Quality", Min = 2.0, Max = 10.0, Decimals = 1,
+                Label = "Bound radius", Group = "Quality", Min = 2.0, Max = 20.0, Decimals = 1,
                 Get = () => BoundRadius, Set = v => BoundRadius = (float)v },
         },
     };

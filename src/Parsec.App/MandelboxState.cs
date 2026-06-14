@@ -50,7 +50,7 @@ public sealed class MandelboxState
         {
             // Fold shape -- the parameters that define the attractor itself.
             new ParamDescriptor {
-                Label = "Scale", Group = "Fold", Min = -3.0, Max = 2.0, Decimals = 2,
+                Label = "Scale", Group = "Fold", Min = -3.0, Max = 3.0, Decimals = 2,
                 Get = () => Scale, Set = v => Scale = (float)v },
             new ParamDescriptor {
                 Label = "Min radius", Group = "Fold", Min = 0.05, Max = 1.0, Decimals = 2,

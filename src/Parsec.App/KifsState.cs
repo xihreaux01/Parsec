@@ -55,23 +55,23 @@ public sealed class KifsState
 
             // Post-fold rotation: the curl / spiral generator. Most expressive knobs.
             new ParamDescriptor {
-                Label = "Post-rot X", Group = "Curl (post-fold rot)", Min = -45, Max = 45, Decimals = 0,
+                Label = "Post-rot X", Group = "Curl (post-fold rot)", Min = -90, Max = 90, Decimals = 0,
                 Get = () => PostX / Deg, Set = v => PostX = (float)v * Deg },
             new ParamDescriptor {
-                Label = "Post-rot Y", Group = "Curl (post-fold rot)", Min = -45, Max = 45, Decimals = 0,
+                Label = "Post-rot Y", Group = "Curl (post-fold rot)", Min = -90, Max = 90, Decimals = 0,
                 Get = () => PostY / Deg, Set = v => PostY = (float)v * Deg },
             new ParamDescriptor {
-                Label = "Post-rot Z", Group = "Curl (post-fold rot)", Min = -45, Max = 45, Decimals = 0,
+                Label = "Post-rot Z", Group = "Curl (post-fold rot)", Min = -90, Max = 90, Decimals = 0,
                 Get = () => PostZ / Deg, Set = v => PostZ = (float)v * Deg },
 
             new ParamDescriptor {
-                Label = "Pre-rot X", Group = "Pre-fold rot", Min = -45, Max = 45, Decimals = 0,
+                Label = "Pre-rot X", Group = "Pre-fold rot", Min = -90, Max = 90, Decimals = 0,
                 Get = () => PreX / Deg, Set = v => PreX = (float)v * Deg },
             new ParamDescriptor {
-                Label = "Pre-rot Y", Group = "Pre-fold rot", Min = -45, Max = 45, Decimals = 0,
+                Label = "Pre-rot Y", Group = "Pre-fold rot", Min = -90, Max = 90, Decimals = 0,
                 Get = () => PreY / Deg, Set = v => PreY = (float)v * Deg },
             new ParamDescriptor {
-                Label = "Pre-rot Z", Group = "Pre-fold rot", Min = -45, Max = 45, Decimals = 0,
+                Label = "Pre-rot Z", Group = "Pre-fold rot", Min = -90, Max = 90, Decimals = 0,
                 Get = () => PreZ / Deg, Set = v => PreZ = (float)v * Deg },
 
             // Pivot: where the scale step contracts toward. Strong morphology knob.
